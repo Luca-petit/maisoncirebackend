@@ -243,6 +243,32 @@ async function apiLoadReviews(productId) {
   return Array.isArray(data?.reviews) ? data.reviews : [];
 }
 
+// ---------- Admin Reviews API ----------
+
+// Supprimer UN avis (DB)
+async function apiAdminDeleteReview(reviewId) {
+  const adminKey = getAdminKey();
+  return await apiFetch(
+    `/api/admin/reviews/${encodeURIComponent(reviewId)}`,
+    {
+      method: "DELETE",
+      headers: { "x-admin-key": adminKey }
+    }
+  );
+}
+
+// Supprimer TOUS les avis d’un produit (DB)
+async function apiAdminClearReviews(productId) {
+  const adminKey = getAdminKey();
+  return await apiFetch(
+    `/api/admin/reviews/product/${encodeURIComponent(productId)}`,
+    {
+      method: "DELETE",
+      headers: { "x-admin-key": adminKey }
+    }
+  );
+}
+
 /* ==========
   Cart storage (singles + packs + giftcards)
 ========== */
@@ -331,7 +357,7 @@ function saveReviewsMap(map) {
   localStorage.setItem(REVIEWS_KEY, JSON.stringify(map));
 }
 
-let reviewsMap = loadReviewsMap(); // fallback local
+let reviewsMap = {}; // fallback local
 let reviewSummary = {};
 
 function getReviews(productId) {
@@ -1376,11 +1402,13 @@ async function openReviewsView(productId) {
   try {
     const srv = await apiLoadReviews(productId);
     reviewsMap[productId] = (srv || []).map(r => ({
+      id: r.id,                // ✅ garder l’id DB
       name: r.name,
       rating: r.rating,
       text: r.text || "",
       ts: r.created_at ? Date.parse(r.created_at) : Date.now()
     }));
+
     reviewSummary = await apiLoadReviewSummary();
     saveReviewsMap(reviewsMap);
   } catch (_) {}
@@ -2133,46 +2161,52 @@ function renderAdminReviews(productId) {
   }).join("");
 }
 
-function deleteReview(productId, index) {
+async function deleteReview(productId, index) {
   const list = getReviews(productId);
   const idx = Number(index);
   if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
 
-  list.splice(idx, 1);
-  reviewsMap[productId] = list;
-  saveReviewsMap(reviewsMap);
+  const review = list[idx];
+  if (!review?.id) return adminReviewsToast("❌ ID avis introuvable");
 
-  renderProducts();
-  renderAdminReviews(productId);
+  try {
+    await apiAdminDeleteReview(review.id);
 
-  if (currentReviewProductId === productId) {
-    renderReviewsList(productId);
-    const { avg, count } = getAvgRating(productId);
-    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
-    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
-    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+    // reload depuis DB
+    const srv = await apiLoadReviews(productId);
+    reviewsMap[productId] = (srv || []).map(r => ({
+      id: r.id,
+      name: r.name,
+      rating: r.rating,
+      text: r.text || "",
+      ts: r.created_at ? Date.parse(r.created_at) : Date.now()
+    }));
+    reviewSummary = await apiLoadReviewSummary();
+
+    renderProducts();
+    renderAdminReviews(productId);
+    adminReviewsToast("Avis supprimé ✅");
+  } catch (e) {
+    adminReviewsToast("❌ " + (e?.message || "Erreur suppression DB"));
   }
-
-  adminReviewsToast("Avis supprimé ✅");
 }
 
-function clearAllReviews(productId) {
-  reviewsMap[productId] = [];
-  saveReviewsMap(reviewsMap);
 
-  renderProducts();
-  renderAdminReviews(productId);
+async function clearAllReviews(productId) {
+  try {
+    await apiAdminClearReviews(productId);
 
-  if (currentReviewProductId === productId) {
-    renderReviewsList(productId);
-    const { avg, count } = getAvgRating(productId);
-    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
-    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
-    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
+    reviewsMap[productId] = [];
+    reviewSummary = await apiLoadReviewSummary();
+
+    renderProducts();
+    renderAdminReviews(productId);
+    adminReviewsToast("Tous les avis supprimés ✅");
+  } catch (e) {
+    adminReviewsToast("❌ " + (e?.message || "Erreur suppression DB"));
   }
-
-  adminReviewsToast("Tous les avis supprimés ✅");
 }
+
 
 // ---------- Admin Add Product (modal) ----------
 
