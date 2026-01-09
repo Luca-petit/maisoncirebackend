@@ -154,6 +154,31 @@ app.post('/api/reviews/:productId', async (req, res) => {
   res.json({ review: data });
 });
 
+// ------- Admin Reviews (DB) -------
+
+// Supprimer UN avis par id
+app.delete('/api/admin/reviews/:id', requireAdmin, async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'id required' });
+
+  const { error } = await supabase.from('reviews').delete().eq('id', id);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ ok: true });
+});
+
+// Supprimer TOUS les avis d’un produit
+app.delete('/api/admin/reviews/product/:productId', requireAdmin, async (req, res) => {
+  const pid = String(req.params.productId || '').trim();
+  if (!pid) return res.status(400).json({ error: 'productId required' });
+
+  const { error } = await supabase.from('reviews').delete().eq('product_id', pid);
+  if (error) return res.status(500).json({ error: error.message });
+
+  res.json({ ok: true });
+});
+
+
 // ------- Notify subscriptions -------
 app.post('/api/notify/:productId', async (req, res) => {
   const pid = String(req.params.productId || '').trim();
