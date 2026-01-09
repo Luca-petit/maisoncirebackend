@@ -160,7 +160,6 @@ function renderOrderDetail(order) {
       <p><strong>Email:</strong> ${escapeHTML(order.email || "")}</p>
       <p><strong>Livraison:</strong> ${escapeHTML(order.delivery_mode || "")}</p>
       <p><strong>Paiement:</strong> ${escapeHTML(order.payment_mode || "")}</p>
-      <p><strong>Frais livraison:</strong> ${formatEUR(Number(order.shipping_fee || 0))}</p>
       <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
     </div>
 

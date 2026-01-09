@@ -289,7 +289,7 @@ function countCartItems(cart) {
 app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
   const { data, error } = await supabase
     .from("orders")
-    .select("id,created_at,total,cart,email,delivery_mode,payment_mode,shipping_fee")
+    .select("id,created_at,total,cart,email,delivery_mode,payment_mode")
     .order("created_at", { ascending: false })
     .limit(200);
 
