@@ -1432,27 +1432,28 @@ function loadAdminFields(productId) {
   if (els.adminDesc) els.adminDesc.value = p.desc;
 }
 
-function saveAdminFields(productId) {
+async function saveAdminFields(productId) {
   const p = getProduct(productId);
   if (!p) return;
 
-  const nextName = (els.adminName?.value || "").trim();
+  const nextName  = (els.adminName?.value || "").trim();
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
   const nextImage = (els.adminImage?.value || "").trim();
-  const nextDesc = (els.adminDesc?.value || "").trim();
+  const nextDescription  = (els.adminDesc?.value || "").trim();
 
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
   if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
   if (!Number.isFinite(nextStock) || nextStock < 0) return msg(els.adminSaveMsg, "Stock invalide.");
 
-  p.name = nextName;
+  // Update local object (UI immédiate)
+  p.name  = nextName;
   p.price = Math.round(nextPrice * 100) / 100;
   p.stock = Math.floor(nextStock);
   p.image = nextImage;
-  p.desc = nextDesc;
+  p.description  = nextDescription;
 
-  // Clamp single cart qty
+  // Clamp single cart qty (garde ton comportement stock réel)
   const reservedWithoutThis = reservedTotal(p.id) - Number(cart.skus[p.id] || 0);
   const maxAllowed = Math.max(0, Number(p.stock || 0) - reservedWithoutThis);
   if (cart.skus[p.id] && cart.skus[p.id] > maxAllowed) {
@@ -1461,27 +1462,45 @@ function saveAdminFields(productId) {
     saveCart(cart);
   }
 
-  saveProducts(products);
+  // UI: état "en cours"
+  msg(els.adminSaveMsg, "Sauvegarde en base...");
 
-  // sync to backend (best-effort)
-  apiFetch(`/api/admin/products/${encodeURIComponent(p.id)}`, {
-    method: "PATCH",
-    headers: { "x-admin-key": localStorage.getItem("candle_shop_admin_key") || "" },
-    body: JSON.stringify({ name: p.name, price: p.price, stock: p.stock, desc: p.desc, image: p.image || "" })
-  }).then(async () => {
-    // refresh products from server
-    try { products = await apiLoadProducts(); saveProducts(products); } catch(_) {}
-    try { reviewSummary = await apiLoadReviewSummary(); } catch(_) {}
+  try {
+    // ✅ PATCH DB
+    await apiFetch(`/api/admin/products/${encodeURIComponent(p.id)}`, {
+      method: "PATCH",
+      headers: {
+        "x-admin-key": localStorage.getItem("candle_shop_admin_key") || ""
+      },
+      body: JSON.stringify({
+        name: p.name,
+        price: p.price,
+        stock: p.stock,
+        image: p.image || "",
+        description: p.description || ""
+      })
+    });
+
+    // ✅ DB = source de vérité => on recharge
+    products = await apiLoadProducts();
+    saveProducts(products);
+
+    // optionnel : refresh summary avis
+    try { reviewSummary = await apiLoadReviewSummary(); } catch (_) {}
+
     renderProducts();
-  }).catch(() => {});
+    renderPackPicker?.();
+    renderCart();
+    renderAdminSelect();
+    if (els.adminSelect) els.adminSelect.value = p.id;
 
-  renderProducts();
-  renderCart();
-  renderAdminSelect();
-  if (els.adminSelect) els.adminSelect.value = p.id;
-
-  msg(els.adminSaveMsg, "Sauvegardé ✅");
+    msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
+  } catch (err) {
+    // 🔥 tu vois enfin l’erreur
+    msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
+  }
 }
+
 
 /* ==========
   Newsletter (demo)
