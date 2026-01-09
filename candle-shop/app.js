@@ -14,7 +14,6 @@
 const SUPABASE_URL = "https://lgewjddjwvhvtfiqskru.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Q0xoPBZJdqpYfo86CZfTxQ_hZMOdco2";
 const SUPABASE_BUCKET = "products";
-const API_URL = window.__API_BASE__ || "";
 
 
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
@@ -2167,7 +2166,7 @@ function readAdminKey(){
 }
 
 async function apiAdminCreateProduct(payload){
-  const res = await fetch(`${API_URL}/api/admin/products`, {
+  const res = await fetch(`${API_BASE}/api/admin/products`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -2181,7 +2180,7 @@ async function apiAdminCreateProduct(payload){
 }
 
 async function refreshProductsFromApi(){
-  const res = await fetch(`${API_URL}/api/products`);
+  const res = await fetch(`${API_BASE}/api/products`);
   const data = await res.json().catch(() => ({}));
   products = Array.isArray(data.products) ? data.products : [];
   // refresh UI partout
