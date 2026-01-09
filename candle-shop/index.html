@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
+  <title>Maison Cire — Bougies</title>
+  <meta name="description" content="Maison Cire — bougies parfumées. Packs personnalisables, panier, admin stock (démo)." />
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+  // If your backend is on another domain (Render), put its URL here.
+  // Example: window.__API_BASE__ = "https://maisoncire-api.onrender.com";
+  window.__API_BASE__ = "";
+</script>
+<script src="app.js" defer></script>
+</head>
+
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="brand">
+      <span class="brandDot"></span>
+      <span class="brandText">Maison Cire</span>
+    </div>
+
+
+    <nav class="nav" id="nav" aria-label="Navigation">
+      <a href="#boutique">Boutique</a>
+      <a href="#packs">Packs</a>
+      <a href="#giftcard">Carte cadeaux</a>
+      <a href="#newsletter">Newsletter</a>
+      <a href="#admin">Admin</a>
+    </nav>
+
+    <div class="headerActions">
+  <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+    <span class="hamburger__bars" aria-hidden="true"></span>
+  </button>
+
+  <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
+    <span aria-hidden="true">🛒</span>
+    <span class="cartBtn__count" id="cartCount">0</span>
+  </button>
+</div>
+
+
+  </header>
+
+  <!-- Hero -->
+  <main>
+   <section class="hero0" id="top">
+  <div class="hero0__bg" aria-hidden="true"></div>
+
+  <div class="hero0__inner">
+    <div class="hero0__content reveal">
+      <span class="hero0__tag">Bougies artisanales · Cire végétale · Parfumées</span>
+
+      <h1 class="hero0__title">
+        L’ambiance qui
+        <span class="hero0__grad">réchauffe</span>
+        votre intérieur.
+      </h1>
+
+      <p class="hero0__lead">
+        Des bougies premium pensées pour transformer une pièce en refuge.
+        Achetez à l’unité ou composez votre pack (3 ou 5) avec remise automatique.
+      </p>
+
+      <div class="hero0__actions">
+        <a class="btn btn--primary" href="#boutique">Commandez maintenant</a>
+        <a class="btn btn--ghost" href="#packs">Construire un pack</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+    <!-- Boutique -->
+    <section class="section reveal" id="boutique">
+      <div class="section__head">
+        <h2>Boutique</h2>
+        <p class="muted">5 bougies · stock en temps réel (démo)</p>
+      </div>
+
+      <div class="grid" id="productGrid" aria-live="polite"></div>
+    </section>
+
+    <!-- Packs (Wizard) -->
+    <section class="section reveal" id="packs">
+      <div class="section__head">
+        <h2>Construire un pack</h2>
+        <p class="muted">Choisis un pack, compose-le, puis ajoute-le au panier.</p>
+      </div>
+
+      <div class="packWizard">
+        <!-- STEP 1 -->
+        <div class="packStep" id="packStep1">
+          <h3 class="packStep__title">1) Choisir un pack</h3>
+
+          <div class="packTypes">
+            <button class="packTypeCard" data-packtype="3" type="button">
+              <div class="packTypeCard__top">
+                <span class="pill">Populaire</span>
+                <span class="badge">3 bougies</span>
+              </div>
+              <h4>Pack 3</h4>
+              <p>Tu en choisis 3, <strong>la moins chère est offerte</strong>.</p>
+            </button>
+
+            <button class="packTypeCard" data-packtype="5" type="button">
+              <div class="packTypeCard__top">
+                <span class="pill">Meilleure valeur</span>
+                <span class="badge">5 bougies</span>
+              </div>
+              <h4>Pack 5</h4>
+              <p>Tu en choisis 5, <strong>les 2 moins chères sont offertes</strong>.</p>
+            </button>
+          </div>
+
+          <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <div class="muted" id="packChosenText">Aucun pack sélectionné.</div>
+            <button class="btn btn--primary" id="packGoStep2" type="button" disabled>
+              Continuer
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="packStep hidden" id="packStep2">
+          <div class="packStep__head">
+            <div>
+              <h3 class="packStep__title">2) Composer votre pack</h3>
+              <p class="muted" id="packStep2Subtitle"></p>
+            </div>
+
+            <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn--ghost" id="packBack" type="button">Retour</button>
+              <button class="btn btn--ghost" id="packReset" type="button">Réinitialiser</button>
+            </div>
+          </div>
+
+          <div class="packBuilder">
+            <div class="packBuilder__left">
+              <div class="packPickGrid" id="packPickGrid"></div>
+            </div>
+
+            <div class="packBuilder__right">
+              <div class="packPreview">
+                <div class="packPreview__head">
+                  <h3>Votre pack</h3>
+                  <span class="badge" id="packProgress">0 / 3</span>
+                </div>
+
+                <div id="packPreviewLines" class="packPreview__lines"></div>
+
+                <div class="packPreview__summary">
+                  <div class="sumRow">
+                    <span>Valeur</span>
+                    <strong id="packValue">0,00 €</strong>
+                  </div>
+                  <div class="sumRow">
+                    <span>Offert (moins cher)</span>
+                    <strong id="packFree">- 0,00 €</strong>
+                  </div>
+                  <div class="sumRow sumRow--total">
+                    <span>Total pack</span>
+                    <strong id="packTotal">0,00 €</strong>
+                  </div>
+
+                  <p class="tiny muted" id="packHint"></p>
+
+                  <p class="tiny muted" id="packPromoNote"></p>
+
+                  <button class="btn btn--primary w100" id="addPackBtn" type="button" disabled>
+                    Ajouter le pack au panier
+                  </button>
+                  <p class="formMsg" id="packMsg" role="status" aria-live="polite"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Carte Cadeau -->
+<section class="section reveal" id="giftcard">
+  <div class="section__head">
+    <h2>Carte Cadeau</h2>
+    <p class="muted">Offrez une ambiance Maison Cire — personnalisation en direct.</p>
+  </div>
+
+  <div class="gift">
+    <!-- Preview -->
+    <div class="gift__previewWrap">
+      <div class="giftCard" id="giftCardPreview" data-color="violet">
+        <div class="giftCard__top">
+          <span class="giftCard__brand">Maison Cire</span>
+          <span class="giftCard__amount" id="gcPreviewAmount">50 €</span>
+        </div>
+
+        <div class="giftCard__title">Carte Cadeau</div>
+
+        <div class="giftCard__meta">
+          <div class="giftCard__row">
+            <span class="giftCard__label">Receveur</span>
+            <span class="giftCard__value" id="gcPreviewReceiver">receveur@email.com</span>
+          </div>
+          <div class="giftCard__row">
+            <span class="giftCard__label">Date d’envoi</span>
+            <span class="giftCard__value" id="gcPreviewDate">—</span>
+          </div>
+        </div>
+
+        <div class="giftCard__msg" id="gcPreviewMsg">Un petit mot… (optionnel)</div>
+        <div class="giftCard__foot">
+          <span class="giftCard__hint">Code envoyé par email à la date choisie</span>
+        </div>
+      </div>
+
+      <p class="tiny muted" style="margin-top:10px;">
+        Aperçu en temps réel — le code est généré côté backend (plus tard).
+      </p>
+    </div>
+
+    <!-- Form -->
+    <div class="gift__form">
+      <div class="gift__grid">
+        <label class="label">
+  Montant
+  <select id="gcAmount">
+    <option value="25">25 €</option>
+    <option value="50" selected>50 €</option>
+    <option value="75">75 €</option>
+    <option value="100">100 €</option>
+    <option value="custom">Autre montant</option>
+  </select>
+</label>
+
+<label class="label" id="gcCustomWrap" style="display:none;">
+  Montant personnalisé (€)
+  <input id="gcCustomAmount" type="number" min="5" step="1" placeholder="Ex: 60" />
+</label>
+
+
+        <div class="label">
+  Couleur
+  <input type="hidden" id="gcColor" value="violet" />
+
+  <div class="colorSwatches" role="radiogroup" aria-label="Choisir une couleur">
+    <button class="swatch is-selected" type="button" data-gc-color="violet" role="radio" aria-checked="true" aria-label="Violet"></button>
+    <button class="swatch" type="button" data-gc-color="sauge" role="radio" aria-checked="false" aria-label="Sauge"></button>
+    <button class="swatch" type="button" data-gc-color="ambre" role="radio" aria-checked="false" aria-label="Ambre"></button>
+    <button class="swatch" type="button" data-gc-color="noir" role="radio" aria-checked="false" aria-label="Noir"></button>
+  </div>
+</div>
+
+
+        <label class="label" style="grid-column: 1 / -1;">
+          Email du receveur
+          <input id="gcReceiverEmail" type="email" placeholder="receveur@email.com" autocomplete="email" required />
+        </label>
+
+        <label class="label">
+          Date d’envoi
+          <input id="gcSendDate" type="date" />
+        </label>
+
+        <label class="label">
+          Votre prénom (optionnel)
+          <input id="gcFromName" type="text" placeholder="Ex: Lina" />
+        </label>
+
+        <label class="label" style="grid-column: 1 / -1;">
+          Message (optionnel)
+          <textarea id="gcMessage" rows="3" placeholder="Écris un petit mot…"></textarea>
+        </label>
+      </div>
+
+      <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button class="btn btn--primary" id="gcAddToCart" type="button">Ajouter la carte au panier</button>
+        <button class="btn btn--ghost" id="gcReset" type="button">Réinitialiser</button>
+      </div>
+
+      <p class="formMsg" id="gcMsg" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</section>
+
+
+    <!-- Newsletter -->
+    <section class="section reveal" id="newsletter">
+      <div class="section__head">
+        <h2>Newsletter</h2>
+        <p class="muted">Reçois les nouveautés (démo)</p>
+      </div>
+
+      <form class="newsletter" id="newsletterForm">
+        <input id="newsletterEmail" type="email" placeholder="Votre email" autocomplete="email" required />
+        <button class="btn btn--primary" type="submit">S'inscrire</button>
+        <p class="formMsg" id="newsletterMsg" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <!-- Admin -->
+    <section class="section reveal" id="admin">
+      <div class="section__head">
+        <h2>Admin</h2>
+        <p class="muted">Gestion produits (démo)</p>
+      </div>
+
+      <div class="adminBox">
+        <div id="adminAuth">
+          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+            <label class="label" style="min-width:240px;">
+              Code admin
+              <input id="adminCode" type="password" placeholder="admin123" />
+            </label>
+            <button class="btn btn--primary" id="adminLogin" type="button">Connexion</button>
+          </div>
+          <p class="formMsg" id="adminMsg" role="status" aria-live="polite"></p>
+        </div>
+
+        <div id="adminPanel" class="hidden">
+          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+            <label class="label" style="min-width:240px;">
+              Produit
+              <select id="adminSelect"></select>
+            </label>
+            <button class="btn btn--ghost" id="adminReset" type="button">Reset données</button>
+          </div>
+
+          <div class="adminForm">
+            <label class="label">
+              Nom
+              <input id="adminName" type="text" />
+            </label>
+
+            <label class="label">
+              Prix (€)
+              <input id="adminPrice" type="number" step="0.01" min="0" />
+            </label>
+
+            <label class="label">
+              Stock
+              <input id="adminStock" type="number" step="1" min="0" />
+            </label>
+
+            <label class="label">
+              Description
+              <textarea id="adminDesc" rows="3"></textarea>
+            </label>
+          </div>
+
+          <!-- Admin Reviews -->
+          <div class="adminReviews" style="margin-top:18px;">
+            <h3 style="margin:0 0 10px;">Avis du produit</h3>
+
+            <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+              <p class="muted" style="margin:0;">
+                Total : <strong id="adminReviewsCount">0</strong> · Moyenne : <strong id="adminReviewsAvg">0,0</strong>/5
+              </p>
+              <button class="btn btn--ghost" id="adminReviewsClear" type="button">Supprimer tous les avis</button>
+            </div>
+
+            <div id="adminReviewsList" style="margin-top:12px;"></div>
+            <p class="formMsg" id="adminReviewsMsg" role="status" aria-live="polite"></p>
+          </div>
+
+
+          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+            <button class="btn btn--primary" id="adminSave" type="button">Sauvegarder</button>
+            <p class="formMsg" id="adminSaveMsg" role="status" aria-live="polite"></p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Cart Drawer -->
+  <div class="drawer" id="cartDrawer" aria-hidden="true">
+    <div class="drawer__overlay" id="cartOverlay" aria-hidden="true"></div>
+
+    <aside class="drawer__panel" role="dialog" aria-modal="true" aria-label="Panier">
+      <div class="drawer__head">
+        <strong>Votre panier</strong>
+        <button class="iconBtn" id="cartClose" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="drawer__body">
+        <div class="cartItems" id="cartItems"></div>
+
+        <div class="cartSummary">
+          <div class="sumRow">
+            <span>Sous-total</span>
+            <strong id="subtotal">0,00 €</strong>
+          </div>
+          <div class="sumRow">
+            <span>Remise</span>
+            <strong id="discount">- 0,00 €</strong>
+          </div>
+          <div class="sumRow sumRow--total">
+            <span>Total</span>
+            <strong id="total">0,00 €</strong>
+          </div>
+
+          <p class="tiny muted" id="discountHint">Aucune promo appliquée.</p>
+
+          <button class="btn btn--primary w100" id="checkoutBtn" type="button">Valider (démo)</button>
+          <button class="btn btn--ghost w100" id="clearCartBtn" type="button">Vider le panier</button>
+
+          <p class="formMsg" id="checkoutMsg" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="muted">© <span id="year"></span> Maison Cire</div>
+      <div class="footer__links">
+        <a href="#" aria-label="Instagram">Instagram</a>
+        <a href="#" aria-label="TikTok">TikTok</a>
+        <a href="#" aria-label="Pinterest">Pinterest</a>
+      </div>
+    </div>
+  </footer>
+
+<!-- Reviews VIEW Modal -->
+<div class="modal modal--top" id="reviewsViewModal" aria-hidden="true">
+  <div class="modal__overlay" data-reviews-view-close></div>
+
+  <div class="modal__panel" role="dialog" aria-modal="true">
+    <div class="modal__head">
+      <strong>Avis clients</strong>
+      <button class="iconBtn" data-reviews-view-close>✕</button>
+    </div>
+
+    <div class="modal__body">
+      <div class="reviewsSummary">
+        <div id="reviewsAvgStars"></div>
+        <div>
+          <strong id="reviewsAvgText">0,0</strong> / 5  
+          <div class="muted tiny"><span id="reviewsCount">0</span> avis</div>
+        </div>
+      </div>
+
+      <div class="reviewsList" id="reviewsList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Reviews FORM Modal -->
+<div class="modal modal--top" id="reviewsFormModal" aria-hidden="true">
+  <div class="modal__overlay" data-reviews-form-close></div>
+
+  <div class="modal__panel" role="dialog" aria-modal="true">
+    <div class="modal__head">
+      <strong>Laisser un avis</strong>
+      <button class="iconBtn" data-reviews-form-close>✕</button>
+    </div>
+
+    <div class="modal__body">
+      
+      <form id="reviewForm">
+        <label class="label">
+          Votre prénom
+          <input id="reviewName" required />
+        </label>
+
+        <label class="label" style="min-width:160px;">
+          Note
+          <input type="hidden" id="reviewRating" value="5" />
+          <div id="reviewStars"></div>
+        </label>
+
+
+        <label class="label">
+          Commentaire (optionnel)
+          <textarea id="reviewText"></textarea>
+        </label>
+
+        <button class="btn btn--primary">Publier l’avis</button>
+        <p class="formMsg" id="reviewMsg"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- Product Modal (PDP) -->
+<div class="pdpModal" id="pdpModal" aria-hidden="true">
+  <div class="pdpModal__overlay" id="pdpOverlay" aria-hidden="true"></div>
+
+  <aside class="pdpModal__panel" role="dialog" aria-modal="true" aria-label="Fiche produit">
+    <div class="pdpModal__head">
+      <strong id="pdpTitle">Produit</strong>
+      <button class="iconBtn" id="pdpClose" aria-label="Fermer">✕</button>
+    </div>
+
+    <div class="pdpModal__body">
+      <div class="pdpGrid">
+        <!-- LEFT -->
+        <div class="pdpMedia">
+          <img id="pdpImg" src="" alt="" />
+        </div>
+
+        <!-- RIGHT -->
+        <div class="pdpInfo">
+          <div class="pdpTop">
+            <div class="pdpPrice" id="pdpPrice">0,00 €</div>
+            <div class="pdpStock muted" id="pdpStock"></div>
+          </div>
+
+          <div class="pdpRating">
+            <div id="pdpStars" class="pdpStars" data-open-reviews></div>
+            <span id="pdpRatingMeta">0,0 · 0 avis</span>
+
+            <button class="btnReviewSmall" id="pdpReviewBtn">
+              Laisser un avis
+            </button>
+          </div>
+
+
+          <p class="pdpDesc" id="pdpDesc"></p>
+
+          <button class="btn btn--primary w100" id="pdpAddToCart" type="button">
+            Ajouter au panier
+          </button>
+
+          <!-- Notify switch (only when out of stock) -->
+<div class="notifyRow" id="pdpNotifyRow" style="display:none;">
+  <div class="notifyRow__left">
+    <strong>Me prévenir quand dispo</strong>
+    <span class="muted tiny">Notification (démo, stock local)</span>
+  </div>
+
+ <label class="notifyToggle">
+  <input type="checkbox" id="pdpNotifyToggle" />
+  <span class="toggleUi"></span>
+</label>
+
+
+  <div class="label" style="margin-top:10px;">
+  Ton email
+  <input id="pdpNotifyEmail" type="email" placeholder="ex: toi@gmail.com" />
+  <p class="formMsg" id="pdpNotifyMsg" role="status" aria-live="polite"></p>
+</div>
+
+</div>
+
+
+
+          <p class="formMsg" id="pdpMsg" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
+
+
+  <!-- Reveal on scroll (optional, keeps your site smooth) -->
+  <script>
+    (function setupReveal(){
+      const els = document.querySelectorAll(".reveal");
+      if (!("IntersectionObserver" in window) || els.length === 0) {
+        els.forEach(el => el.classList.add("is-in"));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-in");
+            io.unobserve(e.target);
+          }
+        }
+      }, { threshold: 0.12 });
+      els.forEach(el => io.observe(el));
+    })();
+  </script>
+</body>
+</html>
+
