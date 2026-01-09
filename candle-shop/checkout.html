@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Checkout — Maison Cire</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script>
+    window.__API_BASE__ = "https://backendmaisoncire.onrender.com";
+  </script>
+</head>
+<body>
+
+  <main class="container" style="max-width:900px;margin:40px auto;padding:0 16px;">
+    <h1>Finaliser la commande</h1>
+
+    <section class="card" style="padding:16px;margin-top:16px;">
+      <h3>Récapitulatif</h3>
+      <div id="checkoutRecap" class="muted" style="margin-top:10px;"></div>
+      <div style="margin-top:12px;">
+        <strong>Total :</strong> <span id="checkoutTotal">—</span>
+      </div>
+    </section>
+
+    <section class="card" style="padding:16px;margin-top:16px;">
+      <h3>Informations</h3>
+
+      <form id="checkoutForm" style="display:grid;gap:10px;margin-top:12px;">
+        <input id="coEmail" type="email" placeholder="Email" required />
+        <input id="coPhone" type="tel" placeholder="Téléphone (optionnel)" />
+
+        <label>
+          Mode de livraison
+          <select id="coDelivery" required>
+            <option value="pickup">Retrait en magasin</option>
+            <option value="shipping">Envoi à domicile</option>
+          </select>
+        </label>
+
+        <div id="coAddressWrap" style="display:none; gap:10px;">
+          <input id="coAddrNumber" placeholder="Numéro" />
+          <input id="coAddrStreet" placeholder="Rue" />
+          <input id="coAddrPostal" placeholder="Code postal" />
+          <input id="coAddrCity" placeholder="Ville" />
+        </div>
+
+        <label>
+          Mode de paiement
+          <select id="coPayment" required>
+            <option value="transfer">Virement</option>
+            <option value="cash">Cash en magasin</option>
+          </select>
+        </label>
+
+        <div id="coPayHint" class="muted"></div>
+
+        <button type="submit" class="btn">Confirmer la commande</button>
+        <div id="coMsg" class="muted"></div>
+      </form>
+    </section>
+  </main>
+
+  <script src="checkout.js"></script>
+</body>
+</html>

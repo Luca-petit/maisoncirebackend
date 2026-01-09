@@ -293,9 +293,39 @@ app.put('/api/cart/:sessionId', async (req, res) => {
 // ------- Checkout: create order + (optional) email -------
 app.post('/api/checkout/:sessionId', async (req, res) => {
   const sid = String(req.params.sessionId || '').trim();
-  const email = String(req.body?.email || '').trim().toLowerCase();
-  if (!email || !email.includes('@')) return res.status(400).json({ error: 'email invalid' });
 
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const phone = String(req.body?.phone || '').trim();
+
+  const delivery_mode = String(req.body?.delivery_mode || '').trim(); // 'pickup' | 'shipping'
+  const payment_mode = String(req.body?.payment_mode || '').trim();   // 'cash' | 'transfer'
+
+  const address = req.body?.address || null; // { street, city, postal_code, number }
+
+  if (!sid) return res.status(400).json({ error: 'sessionId required' });
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'email invalid' });
+  if (!delivery_mode || !['pickup','shipping'].includes(delivery_mode)) {
+    return res.status(400).json({ error: 'delivery_mode invalid' });
+  }
+  if (!payment_mode || !['cash','transfer'].includes(payment_mode)) {
+    return res.status(400).json({ error: 'payment_mode invalid' });
+  }
+
+  // règles business
+  if (delivery_mode === 'shipping') {
+    const n = String(address?.number || '').trim();
+    const street = String(address?.street || '').trim();
+    const postal_code = String(address?.postal_code || '').trim();
+    const city = String(address?.city || '').trim();
+    if (!n || !street || !postal_code || !city) {
+      return res.status(400).json({ error: 'address required for shipping' });
+    }
+  }
+  if (payment_mode === 'cash' && delivery_mode !== 'pickup') {
+    return res.status(400).json({ error: 'cash allowed only for pickup' });
+  }
+
+  // charge panier
   const { data: cartRow, error: cartErr } = await supabase
     .from('carts')
     .select('cart')
@@ -305,35 +335,108 @@ app.post('/api/checkout/:sessionId', async (req, res) => {
   if (cartErr) return res.status(404).json({ error: 'cart not found' });
   const cart = cartRow.cart || {};
 
-  // compute total server-side from products
-  const { data: prod, error: prodErr } = await supabase.from('products').select('id,price').in('id', Object.keys(cart.skus || {}));
+  // total server-side (comme tu fais déjà)
+  const skuIds = Object.keys(cart.skus || {});
+  const { data: prod, error: prodErr } = await supabase
+    .from('products')
+    .select('id,price,name')
+    .in('id', skuIds.length ? skuIds : ['__none__']); // évite IN ()
+
   if (prodErr) return res.status(500).json({ error: prodErr.message });
+
   const priceMap = Object.fromEntries((prod || []).map(p => [p.id, Number(p.price) || 0]));
+  const nameMap  = Object.fromEntries((prod || []).map(p => [p.id, String(p.name || p.id)]));
 
   let total = 0;
   for (const [id, qty] of Object.entries(cart.skus || {})) {
     total += (priceMap[id] || 0) * (Number(qty) || 0);
   }
-  // packs & giftcards already include totals in cart object (as front computes)
   for (const pack of (cart.packs || [])) total += Number(pack.total || 0);
   for (const gc of (cart.giftcards || [])) total += Number(gc.amount || 0);
   total = Math.round(total * 100) / 100;
 
+  // insert order
   const { data: order, error: orderErr } = await supabase
     .from('orders')
-    .insert({ session_id: sid, email, cart, total })
-    .select('id,created_at,total')
+    .insert({
+      session_id: sid,
+      email,
+      phone: phone || null,
+      delivery_mode,
+      payment_mode,
+      address: delivery_mode === 'shipping' ? address : null,
+      cart,
+      total
+    })
+    .select('id,created_at,total,delivery_mode,payment_mode')
     .single();
 
   if (orderErr) return res.status(500).json({ error: orderErr.message });
 
+  // Infos paiement
+  const BANK_INFO = process.env.BANK_INFO || "BE00 XXXX XXXX XXXX"; // mets ton vrai IBAN dans Render env
+  const payLine = payment_mode === 'transfer'
+    ? `Paiement par virement : merci de verser ${order.total} € au ${BANK_INFO}.`
+    : `Paiement en espèces au retrait en magasin.`;
+
+  // petit récap lignes
+  const lines = [];
+  for (const [id, qty] of Object.entries(cart.skus || {})) {
+    lines.push(`- ${nameMap[id] || id} x${qty}`);
+  }
+  for (const pack of (cart.packs || [])) lines.push(`- ${pack.name || 'Pack'} (${pack.total} €)`);
+  for (const gc of (cart.giftcards || [])) lines.push(`- Carte cadeau (${gc.amount} €)`);
+
+  const deliveryLine = delivery_mode === 'shipping'
+    ? `Livraison : envoi à domicile`
+    : `Livraison : retrait en magasin`;
+
+  const addrLine = delivery_mode === 'shipping'
+    ? `Adresse : ${address.number} ${address.street}, ${address.postal_code} ${address.city}`
+    : `Adresse : —`;
+
   const subject = `Confirmation de commande — Maison Cire`;
-  const text = `Merci pour votre commande !\n\nTotal: ${order.total} €\nCommande: ${order.id}`;
-  const html = `<p>Merci pour votre commande !</p><p><strong>Total:</strong> ${order.total} €</p><p><strong>Commande:</strong> ${order.id}</p>`;
+  const text =
+`Merci pour votre commande !
+
+Commande: ${order.id}
+Total: ${order.total} €
+
+${deliveryLine}
+${addrLine}
+Téléphone: ${phone || '—'}
+
+Articles:
+${lines.join('\n')}
+
+${payLine}
+`;
+
+  const html = `
+  <p>Merci pour votre commande !</p>
+  <p><strong>Commande:</strong> ${order.id}<br/>
+     <strong>Total:</strong> ${order.total} €</p>
+  <p><strong>${deliveryLine}</strong><br/>${addrLine}<br/>
+     <strong>Téléphone:</strong> ${phone || '—'}</p>
+  <p><strong>Articles:</strong><br/>${lines.map(x => escapeHTML(x)).join('<br/>')}</p>
+  <p><strong>${escapeHTML(payLine)}</strong></p>
+  `;
+
   await sendOrderEmail({ to: email, subject, html, text });
 
-  res.json({ order });
+  res.json({ order, payLine });
 });
+
+// mini escape HTML (si tu n’en as pas côté server)
+function escapeHTML(str) {
+  return String(str || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

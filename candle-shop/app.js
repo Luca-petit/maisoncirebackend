@@ -1873,14 +1873,15 @@ if (els.clearCartBtn) {
 
 if (els.checkoutBtn) {
   els.checkoutBtn.addEventListener("click", () => {
-    const t = computeTotals();
     if (totalCartCount() === 0) {
       toast("Ajoute au moins une bougie 🙂");
       return;
     }
-    toast(`Panier validé (démo). Total: ${formatEUR(t.total)}. Remise: ${formatEUR(t.discount)}.`);
+    // ✅ on va sur checkout
+    window.location.href = "checkout.html";
   });
 }
+
 
 /* =========================
    HAMBURGER MENU (FIX)
