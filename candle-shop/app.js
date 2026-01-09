@@ -88,6 +88,26 @@ function escapeHTML(str) {
     .replaceAll("'", "&#039;");
 }
 
+function slugify(str) {
+  return String(str || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // enlève accents
+    .replace(/[^a-z0-9]+/g, "-")                      // espaces + chars -> -
+    .replace(/^-+|-+$/g, "")                          // trim -
+    .replace(/--+/g, "-");                            // évite --
+}
+
+function makeUniqueId(base, existingIds) {
+  let id = base || "produit";
+  if (!existingIds.has(id)) return id;
+
+  let i = 2;
+  while (existingIds.has(`${id}-${i}`)) i++;
+  return `${id}-${i}`;
+}
+
+
 function formatEUR(n) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(n || 0);
 }
@@ -2153,6 +2173,19 @@ const adminAdd = {
   description: document.getElementById("adminAddDescription"),
 };
 
+adminAdd.name?.addEventListener("input", () => {
+  const name = (adminAdd.name.value || "").trim();
+  const base = slugify(name);
+
+  // on regarde les IDs déjà chargés (source = products en mémoire)
+  const existing = new Set((products || []).map(p => p.id));
+
+  const unique = makeUniqueId(base, existing);
+
+  if (adminAdd.id) adminAdd.id.value = unique;
+});
+
+
 adminAdd.imgBtn = document.getElementById("adminImgBtn");
 adminAdd.imgFile = document.getElementById("adminImgFile");
 adminAdd.imgStatus = document.getElementById("adminImgStatus");
@@ -2271,8 +2304,11 @@ adminAdd.form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!adminAdd.msg) return;
 
-  const id = (adminAdd.id?.value || "").trim();
   const name = (adminAdd.name?.value || "").trim();
+  const base = slugify(name);
+  const existing = new Set((products || []).map(p => p.id));
+  const id = makeUniqueId(base, existing);
+  if (adminAdd.id) adminAdd.id.value = id; // garde cohérence
   const price = Number(adminAdd.price?.value || 0);
   const stock = Number(adminAdd.stock?.value || 0);
   const image = (adminAdd.image?.value || "").trim();
