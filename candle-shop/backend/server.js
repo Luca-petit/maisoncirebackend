@@ -32,14 +32,14 @@ app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.get('/api/products', async (_req, res) => {
   const { data, error } = await supabase
     .from('products')
-    .select('id,name,price,stock,desc,image,updated_at')
+    .select('id,name,price,stock,description,image,updated_at')
     .order('name', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
   res.json({ products: data || [] });
 });
 
 app.post('/api/admin/products', requireAdmin, async (req, res) => {
-  const { id, name, price, stock, desc, image } = req.body || {};
+  const { id, name, price, stock, description, image } = req.body || {};
   const pid = String(id || '').trim();
   if (!pid) return res.status(400).json({ error: 'id required' });
   const payload = {
@@ -47,7 +47,7 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
     name: String(name || '').trim() || pid,
     price: Number(price || 0),
     stock: clampInt(stock || 0, 0, 10_000),
-    desc: String(desc || ''),
+    description: String(description || ''),
     image: String(image || '') || null,
     updated_at: new Date().toISOString()
   };
@@ -61,14 +61,14 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const pid = String(req.params.id || '').trim();
   if (!pid) return res.status(400).json({ error: 'bad id' });
 
-  const { name, price, stock, desc, image } = req.body || {};
+  const { name, price, stock, description, image } = req.body || {};
   const payload = {
     updated_at: new Date().toISOString()
   };
   if (name !== undefined) payload.name = String(name || '').trim();
   if (price !== undefined) payload.price = Number(price || 0);
   if (stock !== undefined) payload.stock = clampInt(stock || 0, 0, 10_000);
-  if (desc !== undefined) payload.desc = String(desc || '');
+  if (description !== undefined) payload.description = String(description || '');
   if (image !== undefined) payload.image = String(image || '') || null;
 
   const { data, error } = await supabase
