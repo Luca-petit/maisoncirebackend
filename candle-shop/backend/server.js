@@ -15,8 +15,9 @@ const supabase = getSupabase();
 const ADMIN_KEY = process.env.ADMIN_KEY || 'admin123';
 
 function requireAdmin(req, res, next) {
-  const key = req.get('x-admin-key') || '';
-  if (key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
+  const key = String(req.get('x-admin-key') || '').trim();
+if (key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
+
   next();
 }
 
@@ -61,10 +62,15 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const pid = String(req.params.id || '').trim();
   if (!pid) return res.status(400).json({ error: 'bad id' });
 
-  const { name, price, stock, description, image } = req.body || {};
-  const payload = {
-    updated_at: new Date().toISOString()
-  };
+  // ✅ accepte les 2 noms venant du front
+  const name = req.body?.name;
+  const price = req.body?.price;
+  const stock = req.body?.stock;
+  const image = req.body?.image;
+  const description = req.body?.description ?? req.body?.desc; // ✅ IMPORTANT
+
+  const payload = { updated_at: new Date().toISOString() };
+
   if (name !== undefined) payload.name = String(name || '').trim();
   if (price !== undefined) payload.price = Number(price || 0);
   if (stock !== undefined) payload.stock = clampInt(stock || 0, 0, 10_000);
@@ -75,12 +81,18 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
     .from('products')
     .update(payload)
     .eq('id', pid)
-    .select('*')
-    .single();
+    .select('id,name,price,stock,description,image,updated_at'); // ✅ select clair
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ product: data });
+
+  // ✅ si aucune ligne modifiée => on le dit !
+  if (!data || data.length === 0) {
+    return res.status(404).json({ error: `product not found: ${pid}` });
+  }
+
+  res.json({ product: data[0] });
 });
+
 
 app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const pid = String(req.params.id || '').trim();
