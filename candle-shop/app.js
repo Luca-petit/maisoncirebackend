@@ -2072,18 +2072,22 @@ if (els.newsletterForm) {
 
 // Admin auth
 if (els.adminLogin) {
-  els.adminLogin.addEventListener("click", () => {
+  els.adminLogin.addEventListener("click", async () => {
     const code = (els.adminCode?.value || "").trim();
     if (code !== ADMIN_CODE_DEMO) return;
 
     localStorage.setItem("candle_shop_admin_key", code);
     
-     els.adminAuth?.classList.add("hidden");
+    els.adminAuth?.classList.add("hidden");
     els.adminPanel?.classList.remove("hidden");
+
+    // 🔥 CHARGER LES COMMANDES ADMIN ICI
+    await loadAdminOrders();
 
     if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
   });
 }
+
 
 if (els.adminSelect) {
   els.adminSelect.addEventListener("change", () => {
