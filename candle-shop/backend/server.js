@@ -82,6 +82,14 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   res.json({ product: data });
 });
 
+app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  const pid = String(req.params.id || '').trim();
+  const { error } = await supabase.from('products').delete().eq('id', pid);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
+
 // ------- Reviews -------
 app.get('/api/reviews/summary', async (_req, res) => {
   // aggregate in SQL (supabase RPC not needed): fetch ratings then reduce

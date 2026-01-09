@@ -158,6 +158,19 @@ async function apiLoadProducts() {
   return Array.isArray(data?.products) ? data.products : [];
 }
 
+async function apiAdminDeleteProduct(id){
+  const res = await fetch(`${API_BASE}/api/admin/products/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: {
+      "x-admin-key": localStorage.getItem("candle_shop_admin_key") || (els.adminCode?.value || "").trim()
+    }
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erreur suppression");
+  return true;
+}
+
+
 async function apiLoadReviewSummary() {
   const data = await apiFetch("/api/reviews/summary");
   return (data?.summary && typeof data.summary === "object") ? data.summary : {};
@@ -404,6 +417,8 @@ const els = {
   adminSave: document.getElementById("adminSave"),
   adminSaveMsg: document.getElementById("adminSaveMsg"),
   adminReset: document.getElementById("adminReset"),
+  adminDelete: document.getElementById("adminDelete"),
+
 
   // Pack Wizard
   packStep1: document.getElementById("packStep1"),
@@ -1846,6 +1861,33 @@ if (els.adminSave) {
   });
 }
 
+if (els.adminDelete) {
+  els.adminDelete.addEventListener("click", async () => {
+    if (!els.adminSelect) return;
+
+    const id = els.adminSelect.value;
+    if (!id) return;
+
+    if (!confirm(`Supprimer définitivement "${id}" ?`)) return;
+
+    try {
+      await apiAdminDeleteProduct(id);
+
+      // si produit dans panier, on le retire (sinon bugs)
+      delete cart.skus[id];
+      cart.packs = (cart.packs || []).filter(pack => !(pack.items || []).some(it => it.id === id));
+      saveCart(cart);
+
+      await refreshProductsFromApi(); // recharge depuis DB
+
+      msg(els.adminSaveMsg, "Produit supprimé ✅");
+    } catch (err) {
+      msg(els.adminSaveMsg, "❌ " + (err?.message || "Erreur suppression"));
+    }
+  });
+}
+
+
 if (els.adminReviewsClear) {
   els.adminReviewsClear.addEventListener("click", () => {
     if (!els.adminSelect) return;
@@ -2226,8 +2268,27 @@ adminAdd.form?.addEventListener("submit", async (e) => {
 ========== */
 
 async function init() {
-  if (!localStorage.getItem(STORAGE_KEY)) saveProducts(products);
-  if (!localStorage.getItem(CART_KEY)) saveCart(cart);
+  // 1) session panier côté backend
+  try { await ensureSessionId(); } catch (_) {}
+
+  // 2) charge produits + reviews depuis backend
+  try {
+    products = await apiLoadProducts();
+    reviewSummary = await apiLoadReviewSummary();
+    saveProducts(products); // optionnel (cache)
+  } catch (e) {
+    // fallback si backend down
+    products = loadProducts();
+  }
+
+  // 3) charge panier depuis backend (si existe)
+  try {
+    const srvCart = await apiLoadCart();
+    if (srvCart) {
+      cart = srvCart;
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    }
+  } catch (_) {}
 
   renderProducts();
   renderCartBadge();
@@ -2239,21 +2300,17 @@ async function init() {
     loadAdminFields(products[0].id);
   }
 
-  if (els.adminReviewsList && products[0]) {
-    renderAdminReviews(products[0].id);
-  }
-
   showPackStep(1);
   updatePackChosenUI();
-
   updateCustomAmountUI();
   renderGiftCardPreview();
+}
+
 
   if (els.reviewStars) {
     if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "0";
     renderReviewStarsUI(getReviewRating() || 5);
   }
-}
 
 init();
 
