@@ -2191,10 +2191,11 @@ adminAdd.imgFile?.addEventListener("change", async () => {
     adminAdd.imgStatus.textContent = "Upload...";
     const url = await uploadProductImage(file);
 
-    // on met l’URL dans le champ readonly (c’est ça qu’on enverra au backend)
+    // URL dans l’input (pour la DB)
     if (adminAdd.image) adminAdd.image.value = url;
 
-     const preview = document.getElementById("adminImgPreview");
+    // 👇👇👇 APERÇU IMAGE (C’EST ICI)
+    const preview = document.getElementById("adminImgPreview");
     if (preview) {
       preview.src = url;
       preview.style.display = "block";

@@ -2589,30 +2589,161 @@ a,
   max-width:240px;
 }
 
-/* MODAL admin – mobile safe */
-.adminModal,
+
+/* =========================
+   MODAL (Admin Add Product)
+   Mobile-safe + scroll inside
+========================= */
+
+/* Overlay */
 #adminAddModal {
   position: fixed;
   inset: 0;
-  z-index: 1000;
-
-  display: flex;
+  display: none;              /* hidden by default */
   align-items: center;
   justify-content: center;
+  padding: 16px;              /* breathing room on mobile */
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 9999;
 
-  padding: 16px;
+  /* iOS: prevent background scroll bounce */
+  overscroll-behavior: contain;
 }
 
-#adminAddModal .modalContent {
-  width: 100%;
-  max-width: 520px;
+/* When open */
+#adminAddModal.open {
+  display: flex;
+}
 
-  max-height: calc(100dvh - 32px); /* 🔥 clé */
-  overflow-y: auto;
-
+/* Panel */
+#adminAddModal .modal__panel,
+#adminAddModal .adminAddPanel,
+#adminAddModal .modalPanel {
+  width: min(720px, 100%);
   background: #fff;
   border-radius: 16px;
-  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+  overflow: hidden; /* keeps header sticky clean */
 
-  -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+  /* IMPORTANT: limit height so internal scrolling works */
+  max-height: calc(100dvh - 32px);
+  max-height: calc(100vh - 32px); /* fallback */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header (title + close) sticky */
+#adminAddModal .modal__header,
+#adminAddModal .adminAddHeader {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#adminAddModal .modal__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+/* Close button */
+#adminAddModal [data-admin-add-close],
+#adminAddModal .modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+
+#adminAddModal [data-admin-add-close]:active {
+  background: rgba(0,0,0,.06);
+}
+
+/* Body scroll area */
+#adminAddModal .modal__body,
+#adminAddModal .adminAddBody {
+  padding: 16px;
+  overflow: auto;                 /* ✅ scroll inside */
+  -webkit-overflow-scrolling: touch; /* ✅ smooth iOS */
+  flex: 1 1 auto;
+}
+
+/* Footer sticky (optional) */
+#adminAddModal .modal__footer,
+#adminAddModal .adminAddFooter {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  background: #fff;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+
+/* Form layout (clean) */
+#adminAddModal label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 14px 0 8px;
+}
+
+#adminAddModal input,
+#adminAddModal textarea,
+#adminAddModal select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 12px;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 12px;
+  font-size: 16px; /* ✅ prevents iOS zoom */
+  outline: none;
+}
+
+#adminAddModal textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+#adminAddModal .row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 560px) {
+  #adminAddModal {
+    padding: 10px;
+  }
+  #adminAddModal .row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Image preview */
+#adminImgPreview {
+  display: none;
+  width: 100%;
+  max-height: 180px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,.12);
+  margin-top: 10px;
+}
+
+/* Small helper text */
+#adminAddModal .hint {
+  font-size: 12px;
+  color: rgba(0,0,0,.55);
+  margin-top: 6px;
 }
