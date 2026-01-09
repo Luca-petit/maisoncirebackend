@@ -261,6 +261,21 @@ async function apiAdminClearReviews(productId) {
   return data;
 }
 
+async function apiNotifySubscribe(productId, email) {
+  return apiFetch(`/api/notify/${encodeURIComponent(productId)}`, {
+    method: "POST",
+    body: JSON.stringify({ email })
+  });
+}
+
+async function apiNotifyUnsubscribe(productId, email) {
+  return apiFetch(`/api/notify/${encodeURIComponent(productId)}`, {
+    method: "DELETE",
+    body: JSON.stringify({ email })
+  });
+}
+
+
 
 
 /* ==========
@@ -1743,59 +1758,48 @@ els.pdpReviewBtn?.addEventListener("click", () => {
 
 
 
-els.pdpNotifyToggle?.addEventListener("change", () => {
+els.pdpNotifyToggle?.addEventListener("change", async () => {
   if (!currentPdpId) return;
 
   const on = !!els.pdpNotifyToggle.checked;
-  const email = (els.pdpNotifyEmail?.value || "").trim();
+  const email = (els.pdpNotifyEmail?.value || "").trim().toLowerCase();
 
-  // ON => email obligatoire + valide
+  // ON => email obligatoire
   if (on) {
     if (!isValidEmail(email)) {
       els.pdpNotifyToggle.checked = false;
       if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l’alerte.";
-      uiToast?.("Entre un email valide ✉️");
       return;
     }
 
-    // Déjà enregistré ?
-    const already = getNotifiedEmail(currentPdpId);
-    if (already) {
-      els.pdpNotifyToggle.checked = true;
-      if (els.pdpNotifyEmail) {
-        els.pdpNotifyEmail.value = already;
-        els.pdpNotifyEmail.readOnly = true;
-        els.pdpNotifyEmail.dataset.saved = already;
-      }
-      if (els.pdpMsg) els.pdpMsg.textContent = "Vous avez déjà indiqué votre adresse mail.";
-      uiToast?.("Déjà enregistré ✅");
-      return;
+    try {
+      if (els.pdpMsg) els.pdpMsg.textContent = "Activation...";
+      await apiNotifySubscribe(currentPdpId, email);
+
+      if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = true;
+      if (els.pdpMsg) els.pdpMsg.textContent = "✅ Alerte activée. On te prévient quand ça revient.";
+    } catch (e) {
+      els.pdpNotifyToggle.checked = false;
+      if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur activation"}`;
     }
 
-    // Enregistre
-    setNotified(currentPdpId, email);
-
-    if (els.pdpNotifyEmail) {
-      els.pdpNotifyEmail.readOnly = true;
-      els.pdpNotifyEmail.dataset.saved = email;
-    }
-
-    if (els.pdpMsg) els.pdpMsg.textContent = "On te préviendra quand ce sera dispo ✅";
-    uiToast?.("Alerte activée ✅");
     return;
   }
 
-  // OFF => supprimer l’email enregistré + unlock
-  setNotified(currentPdpId, false);
+  // OFF => delete en DB
+  try {
+    if (els.pdpMsg) els.pdpMsg.textContent = "Désactivation...";
+    await apiNotifyUnsubscribe(currentPdpId, email);
 
-  if (els.pdpNotifyEmail) {
-    els.pdpNotifyEmail.readOnly = false;
-    els.pdpNotifyEmail.dataset.saved = "";
+    if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = false;
+    if (els.pdpMsg) els.pdpMsg.textContent = "Alerte désactivée ✅";
+  } catch (e) {
+    // si ça fail, on remet ON pour cohérence UI
+    els.pdpNotifyToggle.checked = true;
+    if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur désactivation"}`;
   }
-
-  if (els.pdpMsg) els.pdpMsg.textContent = "Alerte désactivée.";
-  uiToast?.("Alerte désactivée ❌");
 });
+
 
 els.pdpNotifyEmail?.addEventListener("input", () => {
   if (!currentPdpId) return;

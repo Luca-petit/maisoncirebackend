@@ -68,14 +68,52 @@ app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
   res.json({ ok: true });
 });
 
+async function notifyBackInStock(productId) {
+  // 1) récupérer tous les emails abonnés à ce produit
+  const { data: subs, error: subErr } = await supabase
+    .from('notify_subscriptions')
+    .select('email')
+    .eq('product_id', productId);
+
+  if (subErr) throw new Error(subErr.message);
+  if (!subs || subs.length === 0) return { sent: 0 };
+
+  // 2) envoyer un email à chacun
+  const subject = `Bonne nouvelle : "${productId}" est de retour en stock !`;
+  const text = `Le produit "${productId}" est à nouveau disponible sur Maison Cire.`;
+  const html = `<p>Le produit <strong>${productId}</strong> est à nouveau disponible sur Maison Cire.</p>`;
+
+  // envoi en parallèle
+  await Promise.all(
+    subs.map(s => sendOrderEmail({ to: s.email, subject, html, text }))
+  );
+
+  // 3) supprimer les abonnements (pour éviter spam / double notif)
+  const { error: delErr } = await supabase
+    .from('notify_subscriptions')
+    .delete()
+    .eq('product_id', productId);
+
+  if (delErr) throw new Error(delErr.message);
+
+  return { sent: subs.length };
+}
 
 app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const pid = String(req.params.id || '').trim();
   if (!pid) return res.status(400).json({ error: 'bad id' });
 
-  const b = req.body || {};
+  // 1) stock AVANT (important)
+  const { data: beforeRow, error: beforeErr } = await supabase
+    .from('products')
+    .select('stock')
+    .eq('id', pid)
+    .single();
+  if (beforeErr) return res.status(500).json({ error: beforeErr.message });
 
-  // ✅ accepte plusieurs variantes
+  const beforeStock = Number(beforeRow?.stock || 0);
+
+  const b = req.body || {};
   const name = b.name ?? b.Name;
   const price = b.price ?? b.Price;
   const stock = b.stock ?? b.Stock;
@@ -90,10 +128,10 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   if (description !== undefined) payload.description = String(description || '');
   if (image !== undefined) payload.image = String(image || '') || null;
 
-  // ✅ debug utile (tu peux le retirer après)
   console.log("PATCH /api/admin/products/:id", { pid, body: b, payload });
 
-  const { data, error } = await supabase
+  // 2) update
+  const { data: updated, error } = await supabase
     .from('products')
     .update(payload)
     .eq('id', pid)
@@ -101,8 +139,22 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
     .single();
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ product: data });
+
+  // 3) si stock passe de 0 à >0 => notify
+  try {
+    const afterStock = Number(updated?.stock || 0);
+    if (beforeStock <= 0 && afterStock > 0) {
+      const r = await notifyBackInStock(pid);
+      console.log("✅ notifyBackInStock", { pid, ...r });
+    }
+  } catch (e) {
+    console.log("❌ notifyBackInStock error", e?.message || e);
+    // on n'empêche pas le patch de réussir
+  }
+
+  res.json({ product: updated });
 });
+
 
 
 // ------- Reviews -------
