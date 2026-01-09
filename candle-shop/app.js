@@ -1467,49 +1467,55 @@ function loadAdminFields(productId) {
 }
 
 async function saveAdminFields(productId) {
+  console.log("🟢 saveAdminFields CALLED", productId);
+
   const p = getProduct(productId);
   if (!p) return;
 
   const nextName = (els.adminName?.value || "").trim();
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
-
-  // ✅ ID CORRECT (index.html = adminDesc)
   const nextDescription = (els.adminDesc?.value || "").trim();
 
+  console.log("🟡 ADMIN FORM VALUES", {
+    nextName,
+    nextPrice,
+    nextStock,
+    nextDescription
+  });
+
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
-  if (!Number.isFinite(nextPrice) || nextPrice < 0)
-    return msg(els.adminSaveMsg, "Prix invalide.");
-  if (!Number.isFinite(nextStock) || nextStock < 0)
-    return msg(els.adminSaveMsg, "Stock invalide.");
+  if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
+  if (!Number.isFinite(nextStock) || nextStock < 0) return msg(els.adminSaveMsg, "Stock invalide.");
 
   const adminKey = getAdminKey();
-  if (!adminKey)
-    return msg(els.adminSaveMsg, "❌ Clé admin manquante (reconnecte-toi).");
+  if (!adminKey) return msg(els.adminSaveMsg, "❌ Clé admin manquante (reconnecte-toi).");
 
   msg(els.adminSaveMsg, "Sauvegarde en base...");
 
+  const payload = {
+    name: nextName,
+    price: Math.round(nextPrice * 100) / 100,
+    stock: Math.floor(nextStock),
+    description: nextDescription
+  };
+
+  console.log("🔵 PAYLOAD SENT TO API", payload);
+
   try {
-    // ✅ PATCH API (server attend "description")
-    await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
+    const result = await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
       method: "PATCH",
       headers: { "x-admin-key": adminKey },
-      body: JSON.stringify({
-        name: nextName,
-        price: Math.round(nextPrice * 100) / 100,
-        stock: Math.floor(nextStock),
-        description: nextDescription
-      })
+      body: JSON.stringify(payload)
     });
 
-    // ✅ DB = source de vérité → reload
+    console.log("🟣 API RESULT", result);
+
+    // Reload produits depuis DB (source de vérité)
     products = await apiLoadProducts();
 
-    // ✅ normalisation pour le front (il utilise p.desc)
-    products = products.map(p => ({
-      ...p,
-      desc: p.description ?? ""
-    }));
+    // Normalise pour ton front (qui utilise p.desc)
+    products = products.map(p => ({ ...p, desc: p.description ?? "" }));
 
     saveProducts(products);
 
@@ -1522,12 +1528,11 @@ async function saveAdminFields(productId) {
 
     msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
   } catch (err) {
-    msg(
-      els.adminSaveMsg,
-      `❌ ${err?.message || "Erreur sauvegarde"}`
-    );
+    console.error("🔴 PATCH ERROR", err);
+    msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
   }
 }
+
 
 
 
