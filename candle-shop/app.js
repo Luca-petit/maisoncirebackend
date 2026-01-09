@@ -1469,65 +1469,48 @@ async function saveAdminFields(productId) {
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
   const nextImage = (els.adminImage?.value || "").trim();
-  const nextDescription  = (els.adminDesc?.value || "").trim();
+  const nextDesc  = (els.adminDesc?.value || "").trim();
 
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
   if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
   if (!Number.isFinite(nextStock) || nextStock < 0) return msg(els.adminSaveMsg, "Stock invalide.");
 
-  // Update local object (UI immédiate)
-  p.name  = nextName;
-  p.price = Math.round(nextPrice * 100) / 100;
-  p.stock = Math.floor(nextStock);
-  p.image = nextImage;
-  p.description  = nextDescription;
-
-  // Clamp single cart qty (garde ton comportement stock réel)
-  const reservedWithoutThis = reservedTotal(p.id) - Number(cart.skus[p.id] || 0);
-  const maxAllowed = Math.max(0, Number(p.stock || 0) - reservedWithoutThis);
-  if (cart.skus[p.id] && cart.skus[p.id] > maxAllowed) {
-    cart.skus[p.id] = maxAllowed;
-    if (cart.skus[p.id] === 0) delete cart.skus[p.id];
-    saveCart(cart);
-  }
-
-  // UI: état "en cours"
   msg(els.adminSaveMsg, "Sauvegarde en base...");
 
   try {
-    // ✅ PATCH DB
+    // ✅ PATCH DB (on envoie desc ET description pour être sûr)
     await apiFetch(`/api/admin/products/${encodeURIComponent(p.id)}`, {
       method: "PATCH",
-      headers: {
-       "x-admin-key": getAdminKey()},
+      headers: { "x-admin-key": getAdminKey() },
       body: JSON.stringify({
-        name: p.name,
-        price: p.price,
-        stock: p.stock,
-        image: p.image || "",
-        description: p.description || ""
+        name: nextName,
+        price: Math.round(nextPrice * 100) / 100,
+        stock: Math.floor(nextStock),
+        image: nextImage || "",
+        desc: nextDesc,           // ✅ si ta DB attend "desc"
+        description: nextDesc     // ✅ si ta DB attend "description"
       })
     });
 
-    // ✅ DB = source de vérité => on recharge
+    // ✅ DB source de vérité => on recharge
     products = await apiLoadProducts();
+    // normalise au cas où l'API renvoie description au lieu de desc
+    products = products.map(x => ({ ...x, desc: x.desc ?? x.description ?? "" }));
+
     saveProducts(products);
 
-    // optionnel : refresh summary avis
-    try { reviewSummary = await apiLoadReviewSummary(); } catch (_) {}
-
     renderProducts();
-    renderPackPicker?.();
     renderCart();
     renderAdminSelect();
-    if (els.adminSelect) els.adminSelect.value = p.id;
+    if (els.adminSelect) els.adminSelect.value = productId;
+    loadAdminFields(productId);
 
     msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
   } catch (err) {
-    // 🔥 tu vois enfin l’erreur
     msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
   }
 }
+
 
 
 /* ==========
