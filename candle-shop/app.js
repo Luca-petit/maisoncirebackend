@@ -80,12 +80,16 @@ const ADMIN_CODE_DEMO = "admin123";
 ========== */
 
 function getAdminKey() {
-  return (
-    localStorage.getItem("candle_shop_admin_key") ||
-    (els.adminCode?.value || "").trim() ||
-    ""
-  );
+  const k = localStorage.getItem("candle_shop_admin_key");
+  if (k && k.trim()) return k.trim();
+  const v = (els.adminCode?.value || "").trim();
+  if (v) {
+    localStorage.setItem("candle_shop_admin_key", v);
+    return v;
+  }
+  return "";
 }
+
 
 
 
@@ -1458,7 +1462,8 @@ function loadAdminFields(productId) {
   if (els.adminPrice) els.adminPrice.value = p.price;
   if (els.adminStock) els.adminStock.value = p.stock;
   if (els.adminImage) els.adminImage.value = p.image || "";
-  if (els.adminDesc) els.adminDesc.value = p.desc;
+  if (els.adminDesc) els.adminDesc.value = p.desc ?? p.description ?? "";
+
 }
 
 async function saveAdminFields(productId) {
@@ -1475,28 +1480,30 @@ async function saveAdminFields(productId) {
   if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
   if (!Number.isFinite(nextStock) || nextStock < 0) return msg(els.adminSaveMsg, "Stock invalide.");
 
+  const adminKey = getAdminKey();
+  if (!adminKey) return msg(els.adminSaveMsg, "❌ Clé admin manquante (reconnecte-toi).");
+
   msg(els.adminSaveMsg, "Sauvegarde en base...");
 
   try {
-    // ✅ PATCH DB (on envoie desc ET description pour être sûr)
-    await apiFetch(`/api/admin/products/${encodeURIComponent(p.id)}`, {
+    // ✅ PATCH DB
+    await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
       method: "PATCH",
-      headers: { "x-admin-key": getAdminKey() },
+      headers: { "x-admin-key": adminKey },
       body: JSON.stringify({
         name: nextName,
         price: Math.round(nextPrice * 100) / 100,
         stock: Math.floor(nextStock),
         image: nextImage || "",
-        desc: nextDesc,           // ✅ si ta DB attend "desc"
-        description: nextDesc     // ✅ si ta DB attend "description"
+        // ✅ on envoie les 2 pour être compatible backend/DB
+        desc: nextDesc,
+        description: nextDesc
       })
     });
 
-    // ✅ DB source de vérité => on recharge
+    // ✅ recharge depuis la DB
     products = await apiLoadProducts();
-    // normalise au cas où l'API renvoie description au lieu de desc
     products = products.map(x => ({ ...x, desc: x.desc ?? x.description ?? "" }));
-
     saveProducts(products);
 
     renderProducts();
@@ -1510,6 +1517,7 @@ async function saveAdminFields(productId) {
     msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
   }
 }
+
 
 
 
