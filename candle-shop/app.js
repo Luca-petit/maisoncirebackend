@@ -14,6 +14,8 @@
 const SUPABASE_URL = "https://lgewjddjwvhvtfiqskru.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Q0xoPBZJdqpYfo86CZfTxQ_hZMOdco2";
 const SUPABASE_BUCKET = "products";
+const API_URL = window.__API_BASE__ || "";
+
 
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
