@@ -2194,6 +2194,12 @@ adminAdd.imgFile?.addEventListener("change", async () => {
     // on met l’URL dans le champ readonly (c’est ça qu’on enverra au backend)
     if (adminAdd.image) adminAdd.image.value = url;
 
+     const preview = document.getElementById("adminImgPreview");
+    if (preview) {
+      preview.src = url;
+      preview.style.display = "block";
+    }
+
     adminAdd.imgStatus.textContent = "✅ Image ajoutée";
   } catch (err) {
     adminAdd.imgStatus.textContent = "❌ " + (err?.message || "Erreur upload");
@@ -2201,13 +2207,23 @@ adminAdd.imgFile?.addEventListener("change", async () => {
 });
 
 
+
 function adminAddOpen(){
   if (!adminAdd.modal) return;
+
   adminAdd.modal.classList.add("open");
   adminAdd.modal.setAttribute("aria-hidden","false");
+
+  const preview = document.getElementById("adminImgPreview");
+  if (preview) {
+    preview.src = "";
+    preview.style.display = "none";
+  }
+
   adminAdd.msg && (adminAdd.msg.textContent = "");
   adminAdd.id?.focus();
 }
+
 function adminAddClose(){
   if (!adminAdd.modal) return;
   adminAdd.modal.classList.remove("open");

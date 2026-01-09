@@ -2588,3 +2588,31 @@ a,
   white-space:nowrap;
   max-width:240px;
 }
+
+/* MODAL admin – mobile safe */
+.adminModal,
+#adminAddModal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 16px;
+}
+
+#adminAddModal .modalContent {
+  width: 100%;
+  max-width: 520px;
+
+  max-height: calc(100dvh - 32px); /* 🔥 clé */
+  overflow-y: auto;
+
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+
+  -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+}
