@@ -302,8 +302,7 @@ app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
     items_count: countCartItems(o.cart),
     email: o.email || "",
     delivery_mode: o.delivery_mode || "",
-    payment_method: o.payment_method || "",
-    shipping_fee: Number(o.shipping_fee) || 0
+    payment_method: o.payment_mode || "",
   }));
 
   res.json({ orders });
