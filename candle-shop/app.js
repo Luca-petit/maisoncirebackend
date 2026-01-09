@@ -1470,23 +1470,27 @@ async function saveAdminFields(productId) {
   const p = getProduct(productId);
   if (!p) return;
 
-  const nextName  = (els.adminName?.value || "").trim();
+  const nextName = (els.adminName?.value || "").trim();
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
-  const nextImage = (els.adminImage?.value || "").trim();
-  const nextDescription  = (els.adminDescription?.value || "").trim();
+
+  // ✅ ID CORRECT (index.html = adminDesc)
+  const nextDescription = (els.adminDesc?.value || "").trim();
 
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
-  if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
-  if (!Number.isFinite(nextStock) || nextStock < 0) return msg(els.adminSaveMsg, "Stock invalide.");
+  if (!Number.isFinite(nextPrice) || nextPrice < 0)
+    return msg(els.adminSaveMsg, "Prix invalide.");
+  if (!Number.isFinite(nextStock) || nextStock < 0)
+    return msg(els.adminSaveMsg, "Stock invalide.");
 
   const adminKey = getAdminKey();
-  if (!adminKey) return msg(els.adminSaveMsg, "❌ Clé admin manquante (reconnecte-toi).");
+  if (!adminKey)
+    return msg(els.adminSaveMsg, "❌ Clé admin manquante (reconnecte-toi).");
 
   msg(els.adminSaveMsg, "Sauvegarde en base...");
 
   try {
-    // ✅ PATCH DB
+    // ✅ PATCH API (server attend "description")
     await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
       method: "PATCH",
       headers: { "x-admin-key": adminKey },
@@ -1494,29 +1498,37 @@ async function saveAdminFields(productId) {
         name: nextName,
         price: Math.round(nextPrice * 100) / 100,
         stock: Math.floor(nextStock),
-        image: nextImage || "",
-        // ✅ on envoie les 2 pour être compatible backend/DB
-        description: nextDescription,
         description: nextDescription
       })
     });
 
-    // ✅ recharge depuis la DB
+    // ✅ DB = source de vérité → reload
     products = await apiLoadProducts();
-    products = products.map(x => ({ ...x, description: x.description ?? x.description ?? "" }));
+
+    // ✅ normalisation pour le front (il utilise p.desc)
+    products = products.map(p => ({
+      ...p,
+      desc: p.description ?? ""
+    }));
+
     saveProducts(products);
 
     renderProducts();
     renderCart();
     renderAdminSelect();
+
     if (els.adminSelect) els.adminSelect.value = productId;
     loadAdminFields(productId);
 
     msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
   } catch (err) {
-    msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
+    msg(
+      els.adminSaveMsg,
+      `❌ ${err?.message || "Erreur sauvegarde"}`
+    );
   }
 }
+
 
 
 

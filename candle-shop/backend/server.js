@@ -58,37 +58,6 @@ app.post('/api/admin/products', requireAdmin, async (req, res) => {
   res.json({ product: data });
 });
 
-app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
-  const pid = String(req.params.id || '').trim();
-  if (!pid) return res.status(400).json({ error: 'bad id' });
-
-  const { name, price, stock, description, image } = req.body || {};
-
-  const payload = { updated_at: new Date().toISOString() };
-  if (name !== undefined) payload.name = String(name || '').trim();
-  if (price !== undefined) payload.price = Number(price || 0);
-  if (stock !== undefined) payload.stock = clampInt(stock || 0, 0, 10_000);
-  if (description !== undefined) payload.description = String(description || '');
-  if (image !== undefined) payload.image = String(image || '') || null;
-
-  // ✅ LOGS pour debug (temporaire)
-  console.log("PATCH /products", { pid, payload });
-
-  const { data, error } = await supabase
-    .from('products')
-    .update(payload)
-    .eq('id', pid)
-    .select('*'); // IMPORTANT: pas de .single()
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  // ✅ si aucune ligne touchée => on le dit clairement
-  if (!data || data.length === 0) {
-    return res.status(404).json({ error: `product not found for id=${pid}` });
-  }
-
-  res.json({ product: data[0] });
-});
 
 
 
@@ -97,6 +66,42 @@ app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const { error } = await supabase.from('products').delete().eq('id', pid);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true });
+});
+
+
+app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  const pid = String(req.params.id || '').trim();
+  if (!pid) return res.status(400).json({ error: 'bad id' });
+
+  const b = req.body || {};
+
+  // ✅ accepte plusieurs variantes
+  const name = b.name ?? b.Name;
+  const price = b.price ?? b.Price;
+  const stock = b.stock ?? b.Stock;
+  const description = b.description ?? b.desc ?? b.Description ?? b.Desc;
+  const image = b.image ?? b.Image;
+
+  const payload = { updated_at: new Date().toISOString() };
+
+  if (name !== undefined) payload.name = String(name || '').trim();
+  if (price !== undefined) payload.price = Number(price || 0);
+  if (stock !== undefined) payload.stock = clampInt(stock || 0, 0, 10_000);
+  if (description !== undefined) payload.description = String(description || '');
+  if (image !== undefined) payload.image = String(image || '') || null;
+
+  // ✅ debug utile (tu peux le retirer après)
+  console.log("PATCH /api/admin/products/:id", { pid, body: b, payload });
+
+  const { data, error } = await supabase
+    .from('products')
+    .update(payload)
+    .eq('id', pid)
+    .select('*')
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ product: data });
 });
 
 
