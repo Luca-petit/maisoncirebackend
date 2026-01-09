@@ -245,19 +245,22 @@ async function apiLoadReviews(productId) {
 
 async function apiAdminDeleteReview(reviewId) {
   const adminKey = getAdminKey();
-  return await apiFetch(`/api/admin/reviews/${encodeURIComponent(reviewId)}`, {
+  const data = await apiFetch(`/api/admin/reviews/${encodeURIComponent(reviewId)}`, {
     method: "DELETE",
     headers: { "x-admin-key": adminKey }
   });
+  return data;
 }
 
 async function apiAdminClearReviews(productId) {
   const adminKey = getAdminKey();
-  return await apiFetch(`/api/admin/reviews/product/${encodeURIComponent(productId)}`, {
+  const data = await apiFetch(`/api/admin/reviews/product/${encodeURIComponent(productId)}`, {
     method: "DELETE",
     headers: { "x-admin-key": adminKey }
   });
+  return data;
 }
+
 
 
 /* ==========
@@ -1979,17 +1982,15 @@ if (els.adminDelete) {
 if (els.adminReviewsClear) {
   els.adminReviewsClear.addEventListener("click", async () => {
     if (!els.adminSelect) return;
-    const productId = els.adminSelect.value;
-    if (!productId) return;
+    const pid = els.adminSelect.value;
+    if (!pid) return;
 
     try {
-      await apiAdminClearReviews(productId); // ✅ DB clear
-      await renderAdminReviews(productId);   // ✅ refresh
+      await apiAdminClearReviews(pid);
+      await renderAdminReviews(pid);
       adminReviewsToast("Tous les avis supprimés ✅");
-      renderProducts();
-      if (currentPdpId === productId) openPdp(productId);
     } catch (err) {
-      adminReviewsToast("❌ " + (err?.message || "Erreur suppression avis"));
+      adminReviewsToast("❌ " + (err?.message || "Erreur suppression"));
     }
   });
 }
@@ -2162,37 +2163,42 @@ async function refreshReviewsFromApi(productId) {
 async function renderAdminReviews(productId) {
   if (!els.adminReviewsList) return;
 
-  // ✅ charge depuis DB à chaque fois (admin = source de vérité)
+  // 1) charger depuis DB
+  let list = [];
   try {
-    await refreshReviewsFromApi(productId);
+    list = await apiLoadReviews(productId);
   } catch (e) {
-    // si backend down, fallback local (au moins tu vois quelque chose)
+    els.adminReviewsList.innerHTML = `<p class="muted">Erreur chargement avis.</p>`;
+    return;
   }
 
-  const list = getReviews(productId);
-  const { avg, count } = getAvgRating(productId);
+  // 2) stats
+  const count = list.length;
+  const avg = count ? (list.reduce((a, r) => a + (Number(r.rating) || 0), 0) / count) : 0;
 
   if (els.adminReviewsCount) els.adminReviewsCount.textContent = String(count);
   if (els.adminReviewsAvg) els.adminReviewsAvg.textContent = (avg || 0).toFixed(1).replace(".", ",");
 
-  if (!list || list.length === 0) {
+  if (count === 0) {
     els.adminReviewsList.innerHTML = `<p class="muted">Aucun avis pour ce produit.</p>`;
     return;
   }
 
+  // 3) render
   els.adminReviewsList.innerHTML = list.map((r) => {
-    const date = new Date(r.ts || Date.now()).toLocaleDateString("fr-FR");
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("fr-FR") : "";
     return `
       <div class="reviewItem" style="margin-bottom:10px;">
         <div class="reviewItem__top">
           <strong>${escapeHTML(r.name || "Client")}</strong>
           ${starsHTML(Number(r.rating) || 0)}
         </div>
-        <p class="tiny muted" style="margin:6px 0 0;">${date}</p>
+        <p class="tiny muted" style="margin:6px 0 0;">${escapeHTML(date)}</p>
         ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
         <div style="margin-top:10px; display:flex; justify-content:flex-end;">
           <button class="btn btn--ghost" type="button"
-                  data-admin-review-del-id="${escapeHTML(r.id || "")}">
+                  data-admin-review-del-id="${escapeHTML(r.id)}"
+                  data-admin-review-pid="${escapeHTML(productId)}">
             🗑️ Supprimer
           </button>
         </div>
@@ -2200,6 +2206,7 @@ async function renderAdminReviews(productId) {
     `;
   }).join("");
 }
+
 
 
 async function deleteReview(productId, index) {
