@@ -66,11 +66,11 @@ async function ensureSessionId() {
 ========== */
 
 const DEFAULT_PRODUCTS = [
-  { id: "vanille", name: "Bougie Vanille", price: 18.9, stock: 12, desc: "Douce, chaleureuse, ultra cocooning.", image: "assets/vanille.jpg" },
-  { id: "ambre", name: "Bougie Ambre", price: 21.5, stock: 9, desc: "Ambrée et élégante, vibe hôtel.", image: "assets/ambre.jpg" },
-  { id: "figue", name: "Bougie Figue", price: 20.0, stock: 7, desc: "Fruité chic, parfait salon.", image: "assets/figue.jpg" },
-  { id: "coton", name: "Bougie Coton", price: 17.5, stock: 15, desc: "Propre et légère, effet linge frais.", image: "assets/coton.jpg" },
-  { id: "santal", name: "Bougie Santal", price: 22.9, stock: 5, desc: "Boisé premium, très apaisant.", image: "assets/santal.jpg" },
+  { id: "vanille", name: "Bougie Vanille", price: 18.9, stock: 12, description: "Douce, chaleureuse, ultra cocooning.", image: "assets/vanille.jpg" },
+  { id: "ambre", name: "Bougie Ambre", price: 21.5, stock: 9, description: "Ambrée et élégante, vibe hôtel.", image: "assets/ambre.jpg" },
+  { id: "figue", name: "Bougie Figue", price: 20.0, stock: 7, description: "Fruité chic, parfait salon.", image: "assets/figue.jpg" },
+  { id: "coton", name: "Bougie Coton", price: 17.5, stock: 15, description: "Propre et légère, effet linge frais.", image: "assets/coton.jpg" },
+  { id: "santal", name: "Bougie Santal", price: 22.9, stock: 5, description: "Boisé premium, très apaisant.", image: "assets/santal.jpg" },
 ];
 
 const ADMIN_CODE_DEMO = "admin123";
@@ -446,7 +446,7 @@ const els = {
   adminName: document.getElementById("adminName"),
   adminPrice: document.getElementById("adminPrice"),
   adminStock: document.getElementById("adminStock"),
-  adminDesc: document.getElementById("adminDesc"),
+  adminDescription: document.getElementById("adminDescription"),
   adminSave: document.getElementById("adminSave"),
   adminSaveMsg: document.getElementById("adminSaveMsg"),
   adminReset: document.getElementById("adminReset"),
@@ -527,7 +527,7 @@ reviewMsg: document.getElementById("reviewMsg"),
   pdpStock: document.getElementById("pdpStock"),
   pdpStars: document.getElementById("pdpStars"),
   pdpRatingMeta: document.getElementById("pdpRatingMeta"),
-  pdpDesc: document.getElementById("pdpDesc"),
+  pdpDescription: document.getElementById("pdpDescription"),
   pdpAddToCart: document.getElementById("pdpAddToCart"),
   pdpMsg: document.getElementById("pdpMsg"),
 
@@ -756,7 +756,7 @@ if (els.pdpNotifyToggle) {
 
   if (els.pdpTitle) els.pdpTitle.textContent = p.name;
   if (els.pdpPrice) els.pdpPrice.textContent = formatEUR(p.price);
-  if (els.pdpDesc) els.pdpDesc.textContent = p.desc || "";
+  if (els.pdpDescription) els.pdpDescription.textContent = p.description || "";
   if (els.pdpStock) els.pdpStock.textContent = left > 0 ? `${left} en stock` : "Rupture";
 
   if (els.pdpImg) {
@@ -1462,7 +1462,7 @@ function loadAdminFields(productId) {
   if (els.adminPrice) els.adminPrice.value = p.price;
   if (els.adminStock) els.adminStock.value = p.stock;
   if (els.adminImage) els.adminImage.value = p.image || "";
-  if (els.adminDesc) els.adminDesc.value = p.desc ?? p.description ?? "";
+  if (els.adminDescription) els.adminDescription.value = p.description ?? p.description ?? "";
 
 }
 
@@ -1474,7 +1474,7 @@ async function saveAdminFields(productId) {
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
   const nextImage = (els.adminImage?.value || "").trim();
-  const nextDesc  = (els.adminDesc?.value || "").trim();
+  const nextDescription  = (els.adminDescription?.value || "").trim();
 
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
   if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
@@ -1496,14 +1496,14 @@ async function saveAdminFields(productId) {
         stock: Math.floor(nextStock),
         image: nextImage || "",
         // ✅ on envoie les 2 pour être compatible backend/DB
-        desc: nextDesc,
-        description: nextDesc
+        description: nextDescription,
+        description: nextDescription
       })
     });
 
     // ✅ recharge depuis la DB
     products = await apiLoadProducts();
-    products = products.map(x => ({ ...x, desc: x.desc ?? x.description ?? "" }));
+    products = products.map(x => ({ ...x, description: x.description ?? x.description ?? "" }));
     saveProducts(products);
 
     renderProducts();
