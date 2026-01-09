@@ -79,6 +79,16 @@ const ADMIN_CODE_DEMO = "admin123";
   Helpers
 ========== */
 
+function getAdminKey() {
+  return (
+    localStorage.getItem("candle_shop_admin_key") ||
+    (els.adminCode?.value || "").trim() ||
+    ""
+  );
+}
+
+
+
 function escapeHTML(str) {
   return String(str)
     .replaceAll("&", "&amp;")
@@ -181,9 +191,8 @@ async function apiLoadProducts() {
 async function apiAdminDeleteProduct(id){
   const res = await fetch(`${API_BASE}/api/admin/products/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: {
-      "x-admin-key": localStorage.getItem("candle_shop_admin_key") || (els.adminCode?.value || "").trim()
-    }
+    headers: { "x-admin-key": getAdminKey() }
+
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || "Erreur suppression");
@@ -1490,8 +1499,7 @@ async function saveAdminFields(productId) {
     await apiFetch(`/api/admin/products/${encodeURIComponent(p.id)}`, {
       method: "PATCH",
       headers: {
-        "x-admin-key": localStorage.getItem("candle_shop_admin_key") || ""
-      },
+       "x-admin-key": getAdminKey()},
       body: JSON.stringify({
         name: p.name,
         price: p.price,
@@ -1878,7 +1886,9 @@ if (els.adminLogin) {
     const code = (els.adminCode?.value || "").trim();
     if (code !== ADMIN_CODE_DEMO) return;
 
-    els.adminAuth?.classList.add("hidden");
+    localStorage.setItem("candle_shop_admin_key", code);
+    
+     els.adminAuth?.classList.add("hidden");
     els.adminPanel?.classList.remove("hidden");
 
     if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
@@ -2281,7 +2291,7 @@ async function apiAdminCreateProduct(payload){
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-admin-key": readAdminKey(),
+      "x-admin-key": getAdminKey()
     },
     body: JSON.stringify(payload),
   });
