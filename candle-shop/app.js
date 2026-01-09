@@ -243,31 +243,22 @@ async function apiLoadReviews(productId) {
   return Array.isArray(data?.reviews) ? data.reviews : [];
 }
 
-// ---------- Admin Reviews API ----------
-
-// Supprimer UN avis (DB)
 async function apiAdminDeleteReview(reviewId) {
   const adminKey = getAdminKey();
-  return await apiFetch(
-    `/api/admin/reviews/${encodeURIComponent(reviewId)}`,
-    {
-      method: "DELETE",
-      headers: { "x-admin-key": adminKey }
-    }
-  );
+  return await apiFetch(`/api/admin/reviews/${encodeURIComponent(reviewId)}`, {
+    method: "DELETE",
+    headers: { "x-admin-key": adminKey }
+  });
 }
 
-// Supprimer TOUS les avis d’un produit (DB)
 async function apiAdminClearReviews(productId) {
   const adminKey = getAdminKey();
-  return await apiFetch(
-    `/api/admin/reviews/product/${encodeURIComponent(productId)}`,
-    {
-      method: "DELETE",
-      headers: { "x-admin-key": adminKey }
-    }
-  );
+  return await apiFetch(`/api/admin/reviews/product/${encodeURIComponent(productId)}`, {
+    method: "DELETE",
+    headers: { "x-admin-key": adminKey }
+  });
 }
+
 
 /* ==========
   Cart storage (singles + packs + giftcards)
@@ -1402,12 +1393,13 @@ async function openReviewsView(productId) {
   try {
     const srv = await apiLoadReviews(productId);
     reviewsMap[productId] = (srv || []).map(r => ({
-      id: r.id,                // ✅ garder l’id DB
-      name: r.name,
-      rating: r.rating,
-      text: r.text || "",
-      ts: r.created_at ? Date.parse(r.created_at) : Date.now()
-    }));
+  id: r.id, // ✅ essentiel pour delete
+  name: r.name,
+  rating: r.rating,
+  text: r.text || "",
+  ts: r.created_at ? Date.parse(r.created_at) : Date.now()
+}));
+
 
     reviewSummary = await apiLoadReviewSummary();
     saveReviewsMap(reviewsMap);
@@ -1581,7 +1573,7 @@ function saveNewsletterEmail(email) {
   Global click handler
 ========== */
 
-document.addEventListener("click", (e) => {
+document.addEventListener("click", async (e) => {
 
   // Open PDP when clicking a product card (but not when clicking buttons inside)
   const openId = e.target?.closest?.("[data-pdp-open]")?.dataset?.pdpOpen;
@@ -1630,14 +1622,25 @@ if (e.target?.closest?.("[data-reviews-form-close]")) {
   const sp = e.target?.closest?.("[data-star-pick]")?.dataset?.starPick;
   if (sp) { setReviewRating(Number(sp)); return; }
 
-  // Admin delete ONE review
-  const delBtn = e.target?.closest?.("[data-admin-review-del]");
-  if (delBtn) {
-    const pid = delBtn.dataset.adminReviewDel;
-    const idx = delBtn.dataset.adminReviewIdx;
-    deleteReview(pid, idx);
-    return;
+ const delBtn = e.target?.closest?.("[data-admin-review-del-id]");
+if (delBtn) {
+  const reviewId = delBtn.dataset.adminReviewDelId;
+  const productId = els.adminSelect?.value;
+
+  if (!reviewId || !productId) return;
+
+  try {
+    await apiAdminDeleteReview(reviewId);   // ✅ DB delete
+    await renderAdminReviews(productId);    // ✅ refresh list + summary
+    adminReviewsToast("Avis supprimé ✅");
+    renderProducts(); // refresh étoiles boutique
+    if (currentPdpId === productId) openPdp(productId); // refresh pdp si ouverte
+  } catch (err) {
+    adminReviewsToast("❌ " + (err?.message || "Erreur suppression avis"));
   }
+  return;
+}
+
 
   // Pack type select (Step 1)
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
@@ -1974,11 +1977,23 @@ if (els.adminDelete) {
 
 
 if (els.adminReviewsClear) {
-  els.adminReviewsClear.addEventListener("click", () => {
+  els.adminReviewsClear.addEventListener("click", async () => {
     if (!els.adminSelect) return;
-    clearAllReviews(els.adminSelect.value);
+    const productId = els.adminSelect.value;
+    if (!productId) return;
+
+    try {
+      await apiAdminClearReviews(productId); // ✅ DB clear
+      await renderAdminReviews(productId);   // ✅ refresh
+      adminReviewsToast("Tous les avis supprimés ✅");
+      renderProducts();
+      if (currentPdpId === productId) openPdp(productId);
+    } catch (err) {
+      adminReviewsToast("❌ " + (err?.message || "Erreur suppression avis"));
+    }
   });
 }
+
 
 if (els.adminReset) {
   els.adminReset.addEventListener("click", () => {
@@ -2127,8 +2142,32 @@ function adminReviewsToast(text) {
   adminReviewsToast._t = setTimeout(() => (els.adminReviewsMsg.textContent = ""), 2400);
 }
 
-function renderAdminReviews(productId) {
+async function refreshReviewsFromApi(productId) {
+  const srv = await apiLoadReviews(productId);
+
+  reviewsMap[productId] = (srv || []).map(r => ({
+    id: r.id,
+    name: r.name,
+    rating: r.rating,
+    text: r.text || "",
+    ts: r.created_at ? Date.parse(r.created_at) : Date.now()
+  }));
+
+  // summary (avg/count) vient du backend
+  reviewSummary = await apiLoadReviewSummary();
+
+  saveReviewsMap(reviewsMap); // optionnel (cache)
+}
+
+async function renderAdminReviews(productId) {
   if (!els.adminReviewsList) return;
+
+  // ✅ charge depuis DB à chaque fois (admin = source de vérité)
+  try {
+    await refreshReviewsFromApi(productId);
+  } catch (e) {
+    // si backend down, fallback local (au moins tu vois quelque chose)
+  }
 
   const list = getReviews(productId);
   const { avg, count } = getAvgRating(productId);
@@ -2136,12 +2175,12 @@ function renderAdminReviews(productId) {
   if (els.adminReviewsCount) els.adminReviewsCount.textContent = String(count);
   if (els.adminReviewsAvg) els.adminReviewsAvg.textContent = (avg || 0).toFixed(1).replace(".", ",");
 
-  if (count === 0) {
+  if (!list || list.length === 0) {
     els.adminReviewsList.innerHTML = `<p class="muted">Aucun avis pour ce produit.</p>`;
     return;
   }
 
-  els.adminReviewsList.innerHTML = list.map((r, idx) => {
+  els.adminReviewsList.innerHTML = list.map((r) => {
     const date = new Date(r.ts || Date.now()).toLocaleDateString("fr-FR");
     return `
       <div class="reviewItem" style="margin-bottom:10px;">
@@ -2152,7 +2191,8 @@ function renderAdminReviews(productId) {
         <p class="tiny muted" style="margin:6px 0 0;">${date}</p>
         ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
         <div style="margin-top:10px; display:flex; justify-content:flex-end;">
-          <button class="btn btn--ghost" type="button" data-admin-review-del="${escapeHTML(productId)}" data-admin-review-idx="${idx}">
+          <button class="btn btn--ghost" type="button"
+                  data-admin-review-del-id="${escapeHTML(r.id || "")}">
             🗑️ Supprimer
           </button>
         </div>
@@ -2160,6 +2200,7 @@ function renderAdminReviews(productId) {
     `;
   }).join("");
 }
+
 
 async function deleteReview(productId, index) {
   const list = getReviews(productId);
