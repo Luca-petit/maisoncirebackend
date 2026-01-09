@@ -32,6 +32,32 @@ const NOTIFY_KEY = "candle_shop_notify_v1";
 ========== */
 
 const API_BASE = (window.__API_BASE__ || "https://backendmaisoncire.onrender.com").replace(/\/$/, "");
+
+async function apiFetch(path, opts = {}) {
+  const url = (API_BASE ? API_BASE : "") + path;
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(opts.headers || {}),
+  };
+
+  const res = await fetch(url, {
+    ...opts,
+    headers,
+  });
+
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+
+  if (!res.ok) {
+    const msg = data?.error || data?.message || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+
+  return data;
+}
+
 function saveProducts(products) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 }
@@ -40,6 +66,7 @@ const SESSION_KEY = "candle_shop_session_id_v1";
 function getSessionId() {
   return localStorage.getItem(SESSION_KEY) || "";
 }
+
 async function ensureSessionId() {
   let sid = getSessionId();
   if (sid) return sid;
@@ -48,6 +75,8 @@ async function ensureSessionId() {
   if (sid) localStorage.setItem(SESSION_KEY, sid);
   return sid;
 }
+
+
 
 /* ==========
   Default data
@@ -1457,13 +1486,10 @@ function loadAdminFields(productId) {
 async function saveAdminFields(productId) {
   console.log("🟢 saveAdminFields CALLED", productId);
 
-  const p = getProduct(productId);
-  if (!p) return;
-
   const nextName = (els.adminName?.value || "").trim();
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
-  const nextDescription = (els.adminDesc?.value || "").trim();
+  const nextDescription = (els.adminDescription?.value || "").trim(); // ✅ FIX ICI
 
   console.log("🟡 ADMIN FORM VALUES", { nextName, nextPrice, nextStock, nextDescription });
 
@@ -1494,12 +1520,7 @@ async function saveAdminFields(productId) {
 
     console.log("🟣 API RESULT", result);
 
-    // reload DB
     products = await apiLoadProducts();
-
-    // si ton front utilise p.desc ailleurs :
-    products = products.map(x => ({ ...x, desc: x.description ?? "" }));
-
     saveProducts(products);
 
     renderProducts();
@@ -1510,13 +1531,10 @@ async function saveAdminFields(productId) {
 
     msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
   } catch (err) {
+    console.error("🔴 SAVE ERROR", err);
     msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
   }
 }
-
-
-
-
 
 
 
