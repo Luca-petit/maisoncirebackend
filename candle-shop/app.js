@@ -23,7 +23,7 @@ const NOTIFY_KEY = "candle_shop_notify_v1";
   - Set window.__API_BASE__ in index.html if backend is on another domain.
 ========== */
 
-const API_BASE = (window.__API_BASE__ || "").replace(/\/$/, "");
+const API_BASE = (window.__API_BASE__ || "https://backendmaisoncire.onrender.com").replace(/\/$/, "");
 async function apiFetch(path, opts = {}) {
   const url = (API_BASE ? API_BASE : "") + path;
   const res = await fetch(url, {
