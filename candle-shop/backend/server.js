@@ -62,36 +62,34 @@ app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
   const pid = String(req.params.id || '').trim();
   if (!pid) return res.status(400).json({ error: 'bad id' });
 
-  // ✅ accepte les 2 noms venant du front
-  const name = req.body?.name;
-  const price = req.body?.price;
-  const stock = req.body?.stock;
-  const image = req.body?.image;
-  const description = req.body?.description ?? req.body?.desc; // ✅ IMPORTANT
+  const { name, price, stock, description, image } = req.body || {};
 
   const payload = { updated_at: new Date().toISOString() };
-
   if (name !== undefined) payload.name = String(name || '').trim();
   if (price !== undefined) payload.price = Number(price || 0);
   if (stock !== undefined) payload.stock = clampInt(stock || 0, 0, 10_000);
   if (description !== undefined) payload.description = String(description || '');
   if (image !== undefined) payload.image = String(image || '') || null;
 
+  // ✅ LOGS pour debug (temporaire)
+  console.log("PATCH /products", { pid, payload });
+
   const { data, error } = await supabase
     .from('products')
     .update(payload)
     .eq('id', pid)
-    .select('id,name,price,stock,description,image,updated_at'); // ✅ select clair
+    .select('*'); // IMPORTANT: pas de .single()
 
   if (error) return res.status(500).json({ error: error.message });
 
-  // ✅ si aucune ligne modifiée => on le dit !
+  // ✅ si aucune ligne touchée => on le dit clairement
   if (!data || data.length === 0) {
-    return res.status(404).json({ error: `product not found: ${pid}` });
+    return res.status(404).json({ error: `product not found for id=${pid}` });
   }
 
   res.json({ product: data[0] });
 });
+
 
 
 app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
