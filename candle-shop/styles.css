@@ -2747,3 +2747,23 @@ a,
   color: rgba(0,0,0,.55);
   margin-top: 6px;
 }
+
+.adminAddFooter {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+
+  padding: 14px 16px;
+  border-top: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+}
+
+/* Boutons = taille naturelle */
+.adminAddFooter button {
+  width: auto !important;
+  flex: 0 0 auto !important;
+  padding: 10px 18px;
+  font-size: 15px;
+  border-radius: 999px;
+}

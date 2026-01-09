@@ -328,7 +328,6 @@
               <select id="adminSelect"></select>
             </label>
             <button id="adminDelete" class="btn btn--danger" type="button">Supprimer le produit</button>
-
           </div>
 
           <div class="adminForm">
@@ -397,7 +396,7 @@
 
   <div class="imgPicker">
     <button class="btn btn--ghost" type="button" id="adminImgBtn">+ Ajouter une image</button>
-    <input id="adminImgFile" type="file" accept="image/*" capture="false" hidden />
+    <input id="adminImgFile" type="file" accept="image/*" hidden />
     <img id="adminImgPreview" style="display:none; width:20%; border-radius:12px; margin-top:10px;" />
     <span class="tiny muted" id="adminImgStatus">Aucune image</span>
   </div>
@@ -412,7 +411,7 @@
         </label>
       </div>
 
-      <div class="modal__foot">
+      <div class="adminAddFooter">
         <button class="btn btn--ghost" type="button" data-admin-add-close>Annuler</button>
         <button class="btn" id="adminAddSubmit" type="submit">Créer</button>
       </div>
