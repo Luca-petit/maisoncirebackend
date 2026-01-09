@@ -11,12 +11,19 @@
 /* ==========
   Storage keys
 ========== */
+const SUPABASE_URL = "https://xxxx.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_....";
+const SUPABASE_BUCKET = "product-images";
+
+const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
 
 const STORAGE_KEY = "candle_shop_products_v2";
 const CART_KEY = "candle_shop_cart_v2";
 const NEWS_KEY = "candle_shop_newsletter_v1";
 const REVIEWS_KEY = "candle_shop_reviews_v1";
 const NOTIFY_KEY = "candle_shop_notify_v1";
+
 
 /* ========== 
   Backend API (Supabase via Express)
@@ -2066,6 +2073,152 @@ function clearAllReviews(productId) {
 
   adminReviewsToast("Tous les avis supprimés ✅");
 }
+
+// ---------- Admin Add Product (modal) ----------
+
+const adminAdd = {
+  openBtn: document.getElementById("adminAddOpen"),
+  modal: document.getElementById("adminAddModal"),
+  form: document.getElementById("adminAddForm"),
+  msgTop: document.getElementById("adminAddMsg"),
+  msg: document.getElementById("adminAddFormMsg"),
+
+  id: document.getElementById("adminAddId"),
+  name: document.getElementById("adminAddName"),
+  price: document.getElementById("adminAddPrice"),
+  stock: document.getElementById("adminAddStock"),
+  image: document.getElementById("adminAddImage"),
+  description: document.getElementById("adminAddDescription"),
+};
+
+adminAdd.imgBtn = document.getElementById("adminImgBtn");
+adminAdd.imgFile = document.getElementById("adminImgFile");
+adminAdd.imgStatus = document.getElementById("adminImgStatus");
+
+adminAdd.imgBtn?.addEventListener("click", () => {
+  adminAdd.imgFile?.click();
+});
+
+async function uploadProductImage(file) {
+  // mini sécurité
+  if (!file) throw new Error("Aucun fichier");
+  if (!file.type.startsWith("image/")) throw new Error("Fichier invalide");
+  if (file.size > 5 * 1024 * 1024) throw new Error("Image trop lourde (max 5MB)");
+
+  const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const path = `products/${Date.now()}_${Math.random().toString(16).slice(2)}.${ext}`;
+
+  const { error } = await supa.storage
+    .from(SUPABASE_BUCKET)
+    .upload(path, file, { upsert: false, contentType: file.type });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supa.storage.from(SUPABASE_BUCKET).getPublicUrl(path);
+  const url = data?.publicUrl;
+  if (!url) throw new Error("Impossible de générer l’URL");
+
+  return url;
+}
+
+adminAdd.imgFile?.addEventListener("change", async () => {
+  const file = adminAdd.imgFile.files?.[0];
+  if (!file) return;
+
+  try {
+    adminAdd.imgStatus.textContent = "Upload...";
+    const url = await uploadProductImage(file);
+
+    // on met l’URL dans le champ readonly (c’est ça qu’on enverra au backend)
+    if (adminAdd.image) adminAdd.image.value = url;
+
+    adminAdd.imgStatus.textContent = "✅ Image ajoutée";
+  } catch (err) {
+    adminAdd.imgStatus.textContent = "❌ " + (err?.message || "Erreur upload");
+  }
+});
+
+
+function adminAddOpen(){
+  if (!adminAdd.modal) return;
+  adminAdd.modal.classList.add("open");
+  adminAdd.modal.setAttribute("aria-hidden","false");
+  adminAdd.msg && (adminAdd.msg.textContent = "");
+  adminAdd.id?.focus();
+}
+function adminAddClose(){
+  if (!adminAdd.modal) return;
+  adminAdd.modal.classList.remove("open");
+  adminAdd.modal.setAttribute("aria-hidden","true");
+}
+
+adminAdd.openBtn?.addEventListener("click", adminAddOpen);
+
+adminAdd.modal?.addEventListener("click", (e) => {
+  if (e.target?.closest?.("[data-admin-add-close]")) adminAddClose();
+});
+
+function readAdminKey(){
+  // option 1: récup via ton input adminCode existant
+  const v = (els.adminCode?.value || "").trim();
+  return v || "admin123"; // fallback si tu veux (sinon supprime)
+}
+
+async function apiAdminCreateProduct(payload){
+  const res = await fetch(`${API_URL}/api/admin/products`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-key": readAdminKey(),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || "Erreur création produit");
+  return data.product;
+}
+
+async function refreshProductsFromApi(){
+  const res = await fetch(`${API_URL}/api/products`);
+  const data = await res.json().catch(() => ({}));
+  products = Array.isArray(data.products) ? data.products : [];
+  // refresh UI partout
+  renderProducts();
+  renderPackPicker();
+  renderAdminSelect();
+}
+
+adminAdd.form?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!adminAdd.msg) return;
+
+  const id = (adminAdd.id?.value || "").trim();
+  const name = (adminAdd.name?.value || "").trim();
+  const price = Number(adminAdd.price?.value || 0);
+  const stock = Number(adminAdd.stock?.value || 0);
+  const image = (adminAdd.image?.value || "").trim();
+  const description = (adminAdd.description?.value || "").trim();
+
+  if (!id || !name) {
+    adminAdd.msg.textContent = "ID et nom requis.";
+    return;
+  }
+
+  adminAdd.msg.textContent = "Création...";
+  try {
+    await apiAdminCreateProduct({ id, name, price, stock, image, description });
+    adminAdd.msg.textContent = "✅ Produit créé";
+    // reset form
+    adminAdd.form.reset();
+    // reload products + rerender Boutique + Packs + Admin select
+    await refreshProductsFromApi();
+    // fermer modal
+    setTimeout(adminAddClose, 400);
+  } catch (err) {
+    adminAdd.msg.textContent = "❌ " + (err?.message || "Erreur");
+  }
+});
+
 
 /* ==========
   Init
