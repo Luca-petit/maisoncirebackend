@@ -2893,3 +2893,33 @@ a,
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.adminOrdersList {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.adminOrderRow {
+  width: 100%;
+  border: 1px solid rgba(0,0,0,.08);
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.adminOrderRow:hover {
+  background: rgba(0,0,0,.02);
+}
+
+.adminOrderDetail {
+  margin-top: 14px;
+  border: 1px solid rgba(0,0,0,.08);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fff;
+}

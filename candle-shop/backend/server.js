@@ -206,6 +206,9 @@ app.post('/api/reviews/:productId', async (req, res) => {
   res.json({ review: data });
 });
 
+
+
+
 // ------- Admin Reviews (DB) -------
 
 // Supprimer UN avis par id
@@ -259,6 +262,68 @@ app.delete('/api/notify/:productId', async (req, res) => {
 
   res.json({ ok: true });
 });
+
+// ------- Admin Orders -------
+
+// helper pour compter les items dans un cart
+function countCartItems(cart) {
+  if (!cart || typeof cart !== "object") return 0;
+
+  const skus = cart.skus && typeof cart.skus === "object" ? cart.skus : {};
+  const packs = Array.isArray(cart.packs) ? cart.packs : [];
+  const giftcards = Array.isArray(cart.giftcards) ? cart.giftcards : [];
+
+  const singlesCount = Object.values(skus).reduce((a, b) => a + (Number(b) || 0), 0);
+
+  const packsUnits = packs.reduce((a, p) => {
+    const items = Array.isArray(p.items) ? p.items : [];
+    return a + items.reduce((aa, it) => aa + (Number(it.qty) || 0), 0);
+  }, 0);
+
+  const giftCount = giftcards.length;
+
+  return singlesCount + packsUnits + giftCount;
+}
+
+// 1) Liste commandes (resume)
+app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id,created_at,total,cart,email,delivery_mode,payment_method,shipping_fee")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const orders = (data || []).map(o => ({
+    id: o.id,
+    created_at: o.created_at,
+    total: Number(o.total) || 0,
+    items_count: countCartItems(o.cart),
+    email: o.email || "",
+    delivery_mode: o.delivery_mode || "",
+    payment_method: o.payment_method || "",
+    shipping_fee: Number(o.shipping_fee) || 0
+  }));
+
+  res.json({ orders });
+});
+
+// 2) Détail complet d’une commande
+app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
+  const id = String(req.params.id || "").trim();
+  if (!id) return res.status(400).json({ error: "id required" });
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ order: data });
+});
+
 
 // ------- Cart -------
 app.post('/api/cart/init', async (_req, res) => {

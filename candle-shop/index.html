@@ -343,6 +343,7 @@
   <p class="tiny muted" id="adminAddMsg" style="margin:8px 0 0;"></p>
 </div>
 
+
 <!-- Admin: modal add product -->
 <div class="modal" id="adminAddModal" aria-hidden="true">
   <div class="modal__overlay" data-admin-add-close></div>
@@ -422,6 +423,16 @@
             <p class="formMsg" id="adminReviewsMsg" role="status" aria-live="polite"></p>
           </div>
 
+          <section class="adminCard" id="adminOrdersCard">
+  <h3>Commandes</h3>
+
+  <div class="tiny muted" id="adminOrdersMsg"></div>
+
+  <div id="adminOrdersList" class="adminOrdersList"></div>
+
+  <div id="adminOrderDetail" class="adminOrderDetail hidden"></div>
+</section>
+
 
           <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
             <button class="btn btn--primary" id="adminSave" type="button">Sauvegarder</button>
@@ -461,7 +472,7 @@
 
           <p class="tiny muted" id="discountHint">Aucune promo appliquée.</p>
 
-          <button class="btn btn--primary w100" id="checkoutBtn" type="button">Valider (démo)</button>
+          <button class="btn btn--primary w100" id="checkoutBtn" type="button">Aller au checkout</button>
           <button class="btn btn--ghost w100" id="clearCartBtn" type="button">Vider le panier</button>
 
           <p class="formMsg" id="checkoutMsg" role="status" aria-live="polite"></p>

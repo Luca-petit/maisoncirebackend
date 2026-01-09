@@ -107,6 +107,114 @@ function getAdminKey() {
   return "";
 }
 
+function formatDateTimeFR(ts) {
+  if (!ts) return "";
+  try {
+    return new Date(ts).toLocaleString("fr-FR");
+  } catch {
+    return String(ts);
+  }
+}
+
+function renderOrderDetail(order) {
+  if (!els.adminOrderDetail) return;
+  if (!order) {
+    els.adminOrderDetail.classList.add("hidden");
+    els.adminOrderDetail.innerHTML = "";
+    return;
+  }
+
+  const cart = order.cart || {};
+  const skus = cart.skus || {};
+  const packs = cart.packs || [];
+  const giftcards = cart.giftcards || [];
+
+  const linesSingles = Object.entries(skus).map(([pid, qty]) => {
+    const p = products.find(x => x.id === pid);
+    return `<li>${escapeHTML(p?.name || pid)} ×${qty}</li>`;
+  }).join("");
+
+  const linesPacks = packs.map(pack => {
+    const items = (pack.items || []).map(it => {
+      const p = products.find(x => x.id === it.id);
+      return `${p?.name || it.id} ×${it.qty}`;
+    }).join(" · ");
+    return `<li><strong>${escapeHTML(pack.name || "Pack")}</strong> — ${escapeHTML(items)}</li>`;
+  }).join("");
+
+  const linesGc = giftcards.map(gc => {
+    return `<li><strong>Carte cadeau</strong> — ${Number(gc.amount || 0)}€ → ${escapeHTML(gc.receiver || "")}</li>`;
+  }).join("");
+
+  els.adminOrderDetail.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+      <h4>Détail commande</h4>
+      <button type="button" class="btn btn--ghost" data-admin-order-close>Fermer</button>
+    </div>
+
+    <p class="tiny muted" style="margin-top:6px;">
+      <strong>#${escapeHTML(order.id)}</strong> · ${escapeHTML(formatDateTimeFR(order.created_at))}
+    </p>
+
+    <div style="margin-top:10px;">
+      <p><strong>Email:</strong> ${escapeHTML(order.email || "")}</p>
+      <p><strong>Livraison:</strong> ${escapeHTML(order.delivery_mode || "")}</p>
+      <p><strong>Paiement:</strong> ${escapeHTML(order.payment_method || "")}</p>
+      <p><strong>Frais livraison:</strong> ${formatEUR(Number(order.shipping_fee || 0))}</p>
+      <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
+    </div>
+
+    <div style="margin-top:14px;">
+      <h5>Articles</h5>
+      <ul>
+        ${linesSingles}
+        ${linesPacks}
+        ${linesGc}
+      </ul>
+    </div>
+
+    <details style="margin-top:12px;">
+      <summary class="tiny muted">Voir le JSON brut</summary>
+      <pre style="white-space:pre-wrap; font-size:12px;">${escapeHTML(JSON.stringify(order, null, 2))}</pre>
+    </details>
+  `;
+
+  els.adminOrderDetail.classList.remove("hidden");
+}
+
+async function loadAdminOrders() {
+  if (!els.adminOrdersList) return;
+
+  els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "Chargement...");
+  els.adminOrdersList.innerHTML = "";
+
+  try {
+    const orders = await apiAdminLoadOrders();
+
+    if (!orders.length) {
+      els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "Aucune commande.");
+      return;
+    }
+
+    els.adminOrdersMsg && (els.adminOrdersMsg.textContent = `${orders.length} commande(s)`);
+
+    els.adminOrdersList.innerHTML = orders.map(o => `
+      <button type="button" class="adminOrderRow" data-admin-order-open="${escapeHTML(o.id)}">
+        <div>
+          <div><strong>#${escapeHTML(o.id)}</strong></div>
+          <div class="tiny muted">${escapeHTML(formatDateTimeFR(o.created_at))} · ${o.items_count} article(s)</div>
+        </div>
+        <div style="text-align:right;">
+          <div><strong>${formatEUR(o.total)}</strong></div>
+          <div class="tiny muted">${escapeHTML(o.delivery_mode || "")}</div>
+        </div>
+      </button>
+    `).join("");
+  } catch (e) {
+    els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "❌ " + (e?.message || "Erreur"));
+  }
+}
+
 
 
 
@@ -232,6 +340,23 @@ async function apiLoadCart() {
   const data = await apiFetch(`/api/cart/${sid}`);
   return data?.cart || null;
 }
+
+async function apiAdminLoadOrders() {
+  const adminKey = getAdminKey();
+  const data = await apiFetch("/api/admin/orders", {
+    headers: { "x-admin-key": adminKey }
+  });
+  return Array.isArray(data?.orders) ? data.orders : [];
+}
+
+async function apiAdminLoadOrderDetail(orderId) {
+  const adminKey = getAdminKey();
+  const data = await apiFetch(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+    headers: { "x-admin-key": adminKey }
+  });
+  return data?.order || null;
+}
+
 
 async function apiAddReview(productId, payload) {
   const data = await apiFetch(`/api/reviews/${productId}`, { method: "POST", body: JSON.stringify(payload) });
@@ -568,6 +693,11 @@ reviewMsg: document.getElementById("reviewMsg"),
   adminReviewsList: document.getElementById("adminReviewsList"),
   adminReviewsClear: document.getElementById("adminReviewsClear"),
   adminReviewsMsg: document.getElementById("adminReviewsMsg"),
+
+  adminOrdersMsg: document.getElementById("adminOrdersMsg"),
+adminOrdersList: document.getElementById("adminOrdersList"),
+adminOrderDetail: document.getElementById("adminOrderDetail"),
+
 
   // PDP modal
   pdpModal: document.getElementById("pdpModal"),
@@ -1605,6 +1735,19 @@ document.addEventListener("click", async (e) => {
     openPdp(openId);
     return;
   }
+
+  const openOrderId = e.target?.closest?.("[data-admin-order-open]")?.dataset?.adminOrderOpen;
+if (openOrderId) {
+  const order = await apiAdminLoadOrderDetail(openOrderId);
+  renderOrderDetail(order);
+  return;
+}
+
+if (e.target?.closest?.("[data-admin-order-close]")) {
+  renderOrderDetail(null);
+  return;
+}
+
 
   // Gift Card: palette couleurs (swatches)
   const sw = e.target?.closest?.(".colorSwatches .swatch");
