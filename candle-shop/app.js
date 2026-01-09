@@ -32,20 +32,8 @@ const NOTIFY_KEY = "candle_shop_notify_v1";
 ========== */
 
 const API_BASE = (window.__API_BASE__ || "https://backendmaisoncire.onrender.com").replace(/\/$/, "");
-async function apiFetch(path, opts = {}) {
-  const url = (API_BASE ? API_BASE : "") + path;
-  const res = await fetch(url, {
-    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
-    ...opts,
-  });
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
-  if (!res.ok) {
-    const msg = data?.error || data?.message || `HTTP ${res.status}`;
-    throw new Error(msg);
-  }
-  return data;
+function saveProducts(products) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 }
 
 const SESSION_KEY = "candle_shop_session_id_v1";
@@ -1477,12 +1465,7 @@ async function saveAdminFields(productId) {
   const nextStock = Number(els.adminStock?.value);
   const nextDescription = (els.adminDesc?.value || "").trim();
 
-  console.log("🟡 ADMIN FORM VALUES", {
-    nextName,
-    nextPrice,
-    nextStock,
-    nextDescription
-  });
+  console.log("🟡 ADMIN FORM VALUES", { nextName, nextPrice, nextStock, nextDescription });
 
   if (!nextName) return msg(els.adminSaveMsg, "Nom invalide.");
   if (!Number.isFinite(nextPrice) || nextPrice < 0) return msg(els.adminSaveMsg, "Prix invalide.");
@@ -1497,7 +1480,7 @@ async function saveAdminFields(productId) {
     name: nextName,
     price: Math.round(nextPrice * 100) / 100,
     stock: Math.floor(nextStock),
-    description: nextDescription
+    description: nextDescription,
   };
 
   console.log("🔵 PAYLOAD SENT TO API", payload);
@@ -1506,32 +1489,31 @@ async function saveAdminFields(productId) {
     const result = await apiFetch(`/api/admin/products/${encodeURIComponent(productId)}`, {
       method: "PATCH",
       headers: { "x-admin-key": adminKey },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     console.log("🟣 API RESULT", result);
 
-    // Reload produits depuis DB (source de vérité)
+    // reload DB
     products = await apiLoadProducts();
 
-    // Normalise pour ton front (qui utilise p.desc)
-    products = products.map(p => ({ ...p, desc: p.description ?? "" }));
+    // si ton front utilise p.desc ailleurs :
+    products = products.map(x => ({ ...x, desc: x.description ?? "" }));
 
     saveProducts(products);
 
     renderProducts();
     renderCart();
     renderAdminSelect();
-
     if (els.adminSelect) els.adminSelect.value = productId;
     loadAdminFields(productId);
 
     msg(els.adminSaveMsg, "Sauvegardé en DB ✅");
   } catch (err) {
-    console.error("🔴 PATCH ERROR", err);
     msg(els.adminSaveMsg, `❌ ${err?.message || "Erreur sauvegarde"}`);
   }
 }
+
 
 
 
