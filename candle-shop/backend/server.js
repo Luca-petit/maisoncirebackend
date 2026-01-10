@@ -14,13 +14,6 @@ const supabase = getSupabase();
 
 const ADMIN_KEY = process.env.ADMIN_KEY || 'admin123';
 
-function requireAdmin(req, res, next) {
-  const key = String(req.get('x-admin-key') || '').trim();
-if (key !== ADMIN_KEY) return res.status(401).json({ error: 'unauthorized' });
-
-  next();
-}
-
 function clampInt(n, min, max) {
   const v = Number(n);
   if (!Number.isFinite(v)) return min;
@@ -259,51 +252,26 @@ function countItems(cart) {
   return singles + packs.length + giftcards.length;
 }
 
-// ✅ Liste des commandes (admin)
-// /api/admin/orders
-// /api/admin/orders?include_done=1
-app.get('/api/admin/orders', requireAdmin, async (req, res) => {
-  const includeDone = String(req.query.include_done || '0') === '1';
 
-  let q = supabase
-    .from('orders')
-    .select('id,created_at,total,status,cart')
-    .order('created_at', { ascending: false });
-
-  if (!includeDone) {
-    q = q.neq('status', 'termine');
-  }
-
-  const { data, error } = await q;
-  if (error) return res.status(500).json({ error: error.message });
-
-  const orders = (data || []).map(o => ({
-    id: o.id,
-    created_at: o.created_at,
-    total: Number(o.total) || 0,
-    status: o.status || 'preparation',
-    items_count: countItems(o.cart)
-  }));
-
-  res.json({ orders });
-});
-
-// ✅ Détail d’une commande
 app.get('/api/admin/orders/:id', requireAdmin, async (req, res) => {
   const id = String(req.params.id || '').trim();
+  if (!id) return res.status(400).json({ error: 'id required' });
 
-  const { data, error } = await supabase
+  const { data: order, error } = await supabase
     .from('orders')
     .select('*')
     .eq('id', id)
     .single();
 
-  if (error || !data) {
-    return res.status(404).json({ error: 'Commande introuvable' });
-  }
+  if (error) return res.status(500).json({ error: error.message });
 
-  res.json({ order: data });
+  // sécurise cart (jsonb ou string)
+  const cart = (typeof order.cart === 'string') ? JSON.parse(order.cart) : (order.cart || {});
+  order.cart = cart;
+
+  res.json({ order });
 });
+
 
 // ✅ Mise à jour du statut + (plus tard) mail
 app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
@@ -383,59 +351,38 @@ function countCartItems(cart) {
 }
 
 
-// 1) Liste commandes (resume)
-app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
-    .neq('status', 'termine')
-    .order('created_at', { ascending: false });
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  const orders = (data || []).map(o => ({
-    id: o.id,
-    created_at: o.created_at,
-    total: Number(o.total) || 0,
-    status: o.status || 'preparation',
-    items_count: countCartItems(o.cart),
-    email: o.email || "",
-    delivery_mode: o.delivery_mode || "",
-    payment_mode: o.payment_mode || "",
-  }));
-
-  res.json({ orders });
-});
-
-
-
-// 2) Détail complet d’une commande
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
-  const mode = String(req.query.mode || '').trim(); // "" | "archive"
+  const mode = String(req.query.mode || '').trim();
 
   let q = supabase
     .from('orders')
-    .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
+    .select('id, created_at, total, status, cart')
     .order('created_at', { ascending: false });
 
-  // ✅ si archive => seulement terminé
-  // ✅ sinon => tout sauf terminé
-  if (mode === 'archive') q = q.eq('status', 'termine');
-  else q = q.neq('status', 'termine');
+  if (mode === 'archive') {
+    q = q.eq('status', 'termine');
+  } else {
+    q = q.neq('status', 'termine');
+  }
 
   const { data, error } = await q;
   if (error) return res.status(500).json({ error: error.message });
 
-  const orders = (data || []).map(o => ({
-    id: o.id,
-    created_at: o.created_at,
-    total: Number(o.total) || 0,
-    status: o.status || 'preparation',
-    items_count: countCartItems(o.cart),
-    email: o.email || "",
-    delivery_mode: o.delivery_mode || "",
-    payment_mode: o.payment_mode || "",
-  }));
+  const orders = (data || []).map(o => {
+    const cart = (typeof o.cart === 'string') ? JSON.parse(o.cart) : (o.cart || {});
+    const skusCount = Object.values(cart.skus || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+    const packsCount = Array.isArray(cart.packs) ? cart.packs.length : 0;
+    const giftCount = Array.isArray(cart.giftcards) ? cart.giftcards.length : 0;
+    const items_count = skusCount + packsCount + giftCount;
+
+    return {
+      id: o.id,
+      created_at: o.created_at,
+      total: Number(o.total || 0),
+      status: o.status,
+      items_count
+    };
+  });
 
   res.json({ orders });
 });
