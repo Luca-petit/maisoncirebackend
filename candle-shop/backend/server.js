@@ -552,7 +552,8 @@ app.post('/api/checkout/:sessionId', async (req, res) => {
       payment_mode,
       address: delivery_mode === 'shipping' ? address : null,
       cart,
-      total
+      total,
+      status: 'preparation'
     })
     .select('id,created_at,total,delivery_mode,payment_mode')
     .single();
