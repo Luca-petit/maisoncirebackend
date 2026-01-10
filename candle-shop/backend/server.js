@@ -285,26 +285,30 @@ function countCartItems(cart) {
   return singlesCount + packsUnits + giftCount;
 }
 
-const orders = (data || []).map(o => ({
+
+// 1) Liste commandes (resume)
+app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  const orders = (data || []).map(o => ({
     id: o.id,
     created_at: o.created_at,
     total: Number(o.total) || 0,
+    status: o.status || 'preparation',
     items_count: countCartItems(o.cart),
     email: o.email || "",
     delivery_mode: o.delivery_mode || "",
     payment_mode: o.payment_mode || "",
   }));
 
-// 1) Liste commandes (resume)
-app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
-  const { data, error } = await supabase
-    .from('orders')
-    .select('id,created_at,email,total,status')
-    .order('created_at', { ascending: false });
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ orders: data || [] });
+  res.json({ orders });
 });
+
 
 
 // 2) Détail complet d’une commande

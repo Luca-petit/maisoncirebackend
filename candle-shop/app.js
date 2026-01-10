@@ -199,7 +199,8 @@ async function loadAdminOrders() {
   els.adminOrdersList.innerHTML = "";
 
   try {
-    const orders = await apiAdminLoadOrders();
+    const data = await apiAdminLoadOrders();
+    const orders = data.orders || [];
 
     if (!orders.length) {
       els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "Aucune commande.");
@@ -209,21 +210,23 @@ async function loadAdminOrders() {
     els.adminOrdersMsg && (els.adminOrdersMsg.textContent = `${orders.length} commande(s)`);
 
     els.adminOrdersList.innerHTML = orders.map(o => `
-      <button type="button" class="adminOrderRow" data-admin-order-open="${escapeHTML(o.id)}">
+      <button type="button" class="adminOrderRow" data-admin-order-open="${o.id}">
         <div>
-          <div><strong>#${escapeHTML(o.id)}</strong></div>
-          <div class="tiny muted">${escapeHTML(formatDateTimeFR(o.created_at))} · ${o.items_count} article(s)</div>
+          <strong>#${o.id}</strong>
+          <div class="tiny muted">${formatDateTimeFR(o.created_at)} · ${o.items_count} article(s)</div>
         </div>
-        <div style="text-align:right;">
-          <div><strong>${formatEUR(o.total)}</strong></div>
-          <div class="tiny muted">${escapeHTML(o.delivery_mode || "")}</div>
+        <div style="text-align:right">
+          <strong>${formatEUR(o.total)}</strong>
+          <div class="tiny muted">${o.status}</div>
         </div>
       </button>
     `).join("");
+
   } catch (e) {
     els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "❌ " + (e?.message || "Erreur"));
   }
 }
+
 
 
 
