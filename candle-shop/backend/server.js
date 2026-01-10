@@ -228,6 +228,111 @@ app.delete("/api/admin/reviews/product/:productId", requireAdmin, async (req, re
   res.json({ ok: true });
 });
 
+// ------- Checkout: create order -------
+app.post("/api/checkout/:sessionId", async (req, res) => {
+  try {
+    const sid = String(req.params.sessionId || "").trim();
+
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    const phone = String(req.body?.phone || "").trim() || null;
+
+    // delivery_mode: 'pickup' | 'shipping'
+    const delivery_mode = String(req.body?.delivery_mode || "pickup").trim();
+    // payment_mode: 'cash' | 'transfer'
+    const payment_mode = String(req.body?.payment_mode || "transfer").trim();
+
+    const address = req.body?.address && typeof req.body.address === "object" ? req.body.address : null;
+    const delivery_fee = Number(req.body?.delivery_fee || 0) || 0;
+
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ error: "email invalid" });
+    }
+
+    // (optionnel) validations basiques
+    if (!["pickup", "shipping"].includes(delivery_mode)) {
+      return res.status(400).json({ error: "delivery_mode invalid" });
+    }
+    if (!["cash", "transfer"].includes(payment_mode)) {
+      return res.status(400).json({ error: "payment_mode invalid" });
+    }
+
+    // 1) récup panier depuis carts
+    const { data: cartRow, error: cartErr } = await supabase
+      .from("carts")
+      .select("cart")
+      .eq("session_id", sid)
+      .single();
+
+    if (cartErr) return res.status(404).json({ error: "cart not found" });
+
+    const cart = cartRow?.cart || { skus: {}, packs: [], giftcards: [] };
+
+    // 2) total server-side
+    const skuIds = Object.keys(cart.skus || {});
+    let priceMap = {};
+
+    if (skuIds.length) {
+      const { data: prod, error: prodErr } = await supabase
+        .from("products")
+        .select("id,price")
+        .in("id", skuIds);
+
+      if (prodErr) return res.status(500).json({ error: prodErr.message });
+
+      priceMap = Object.fromEntries((prod || []).map(p => [p.id, Number(p.price) || 0]));
+    }
+
+    let total = 0;
+
+    // singles
+    for (const [id, qty] of Object.entries(cart.skus || {})) {
+      total += (priceMap[id] || 0) * (Number(qty) || 0);
+    }
+
+    // packs: on prend pack.total si présent sinon pack.value - pack.free
+    for (const pack of (cart.packs || [])) {
+      const packTotal = Number(pack.total ?? ((Number(pack.value || 0) - Number(pack.free || 0)))) || 0;
+      total += packTotal;
+    }
+
+    // giftcards
+    for (const gc of (cart.giftcards || [])) total += Number(gc.amount || 0);
+
+    // frais livraison
+    total += delivery_fee;
+
+    total = Math.round(total * 100) / 100;
+
+    // 3) insert order
+    const { data: order, error: orderErr } = await supabase
+      .from("orders")
+      .insert({
+        session_id: sid,
+        email,
+        phone,
+        delivery_mode,
+        payment_mode,
+        address,
+        delivery_fee,
+        status: "preparation",
+        cart,
+        total,
+      })
+      .select("id,created_at,total,status")
+      .single();
+
+    if (orderErr) return res.status(500).json({ error: orderErr.message });
+
+    // (optionnel) vider le panier après commande
+    // await supabase.from("carts").update({ cart: { skus:{}, packs:[], giftcards:[] }, updated_at: new Date().toISOString() }).eq("session_id", sid);
+
+    res.json({ order });
+  } catch (e) {
+    res.status(500).json({ error: e?.message || "server error" });
+  }
+});
+
+
 // =======================================================
 // NOTIFY (stock alert)
 // =======================================================
