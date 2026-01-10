@@ -212,8 +212,10 @@ async function loadAdminOrders() {
   els.adminOrdersList.innerHTML = "";
 
   try {
-    const data = await apiAdminLoadOrders(showFinishedOrders ? "archive" : "");
-    let orders = data.orders || []; // ✅ let (pas const)
+    const mode = showFinishedOrders ? "archive" : "";
+    const data = await apiAdminLoadOrders(mode);
+    let orders = data.orders || [];
+
 
     // ✅ FILTRE ICI (ETAPE 3)
     orders = orders.filter(o => {
@@ -384,6 +386,7 @@ async function apiAdminLoadOrders(mode = "") {
     headers: { 'x-admin-key': getAdminKey() }
   });
 }
+
 
 
 async function apiAdminLoadOrder(orderId) {
@@ -2257,19 +2260,6 @@ if (els.adminReset) {
     msg(els.adminSaveMsg, "Reset effectué ✅");
   });
 }
-
-document.getElementById("adminOrderStatus")?.addEventListener("change", async (e) => {
-  const status = e.target.value;
-  const msgEl = document.getElementById("adminOrderStatusMsg");
-
-  try {
-    if (msgEl) msgEl.textContent = "Mise à jour...";
-    await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
-    if (msgEl) msgEl.textContent = "✅ Statut mis à jour + mail envoyé";
-  } catch (err) {
-    if (msgEl) msgEl.textContent = "❌ " + (err?.message || "Erreur");
-  }
-});
 
 
 /* Pack Wizard bindings */

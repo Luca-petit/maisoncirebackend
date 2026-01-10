@@ -313,21 +313,20 @@ app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
 
 
 // 2) Détail complet d’une commande
-// 1) Liste commandes (resume) + mode archive
 app.get('/api/admin/orders', requireAdmin, async (req, res) => {
-  const mode = String(req.query?.mode || "").trim(); // "" | "archive"
+  const mode = String(req.query.mode || '').trim(); // "" | "archive"
 
   let q = supabase
     .from('orders')
     .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
     .order('created_at', { ascending: false });
 
-  // ✅ si archive => uniquement terminées, sinon => tout sauf terminées
-  if (mode === "archive") q = q.eq('status', 'termine');
+  // ✅ si archive => seulement terminé
+  // ✅ sinon => tout sauf terminé
+  if (mode === 'archive') q = q.eq('status', 'termine');
   else q = q.neq('status', 'termine');
 
   const { data, error } = await q;
-
   if (error) return res.status(500).json({ error: error.message });
 
   const orders = (data || []).map(o => ({
@@ -343,6 +342,7 @@ app.get('/api/admin/orders', requireAdmin, async (req, res) => {
 
   res.json({ orders });
 });
+
 
 
 function statusLabel(status) {
