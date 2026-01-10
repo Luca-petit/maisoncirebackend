@@ -213,10 +213,20 @@ async function loadAdminOrders() {
 
   try {
     const data = await apiAdminLoadOrders();
-    const orders = data.orders || [];
+    let orders = data.orders || []; // ✅ let (pas const)
+
+    // ✅ FILTRE ICI (ETAPE 3)
+    orders = orders.filter(o => {
+      const status = o.status || "preparation";
+      return showFinishedOrders
+        ? status === "termine"      // mode archive
+        : status !== "termine";     // mode normal
+    });
 
     if (!orders.length) {
-      els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "Aucune commande.");
+      els.adminOrdersMsg && (els.adminOrdersMsg.textContent =
+        showFinishedOrders ? "Aucune commande terminée." : "Aucune commande."
+      );
       return;
     }
 
@@ -239,6 +249,7 @@ async function loadAdminOrders() {
     els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "❌ " + (e?.message || "Erreur"));
   }
 }
+
 
 
 
@@ -612,6 +623,9 @@ let chosenPackSize = null;
 let currentReviewProductId = null;
 
 let currentPdpId = null;
+
+let showFinishedOrders = false;
+
 
 /* ==========
   DOM
@@ -1922,6 +1936,24 @@ if (delBtn) {
   Bindings
 ========== */
 
+
+document.getElementById("adminToggleFinished")?.addEventListener("click", async () => {
+  showFinishedOrders = !showFinishedOrders;
+
+  const btn = document.getElementById("adminToggleFinished");
+  const label = document.getElementById("adminOrdersMode");
+
+  if (showFinishedOrders) {
+    btn.textContent = "Voir les commandes en cours";
+    if (label) label.textContent = "Commandes terminées (archive)";
+  } else {
+    btn.textContent = "Voir les commandes terminées";
+    if (label) label.textContent = "Commandes en cours";
+  }
+
+  await loadAdminOrders();
+});
+
 // Voir les avis (clic sur "x avis")
 els.pdpRatingMeta?.addEventListener("click", () => {
   if (!currentPdpId) return;
@@ -2124,8 +2156,12 @@ if (els.adminLogin) {
     els.adminAuth?.classList.add("hidden");
     els.adminPanel?.classList.remove("hidden");
 
-    // 🔥 CHARGER LES COMMANDES ADMIN ICI
+
     await loadAdminOrders();
+
+    // si elle est terminée, on ferme le détail
+    if ( status === 'termine') renderOrderDetail(null);
+
 
     if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
   });
@@ -2702,8 +2738,18 @@ document.addEventListener('change', async (e) => {
 
     try {
       if (msgEl) msgEl.textContent = 'Mise à jour...';
+
       await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
+
+      // ✅ ICI EXACTEMENT
+      if (status === 'termine') {
+        renderOrderDetail(null);   // ferme le détail
+        await loadAdminOrders();   // recharge la liste (elle disparaît)
+        return;                    // on s’arrête là
+      }
+
       if (msgEl) msgEl.textContent = '✅ Statut mis à jour + mail envoyé';
+
     } catch (err) {
       if (msgEl) msgEl.textContent = '❌ ' + (err?.message || 'Erreur');
     }

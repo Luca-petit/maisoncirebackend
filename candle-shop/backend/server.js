@@ -291,6 +291,7 @@ app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
   const { data, error } = await supabase
     .from('orders')
     .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
+    .neq('status', 'termine')
     .order('created_at', { ascending: false });
 
   if (error) return res.status(500).json({ error: error.message });
