@@ -163,15 +163,20 @@ function renderOrderDetail(order) {
       <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
     </div>
 
-    <div style="margin-top:10px;">
-  <label class="tiny muted">Statut</label>
-  <select id="adminOrderStatus" class="input" style="margin-top:6px;">
-    <option value="preparation">En préparation</option>
-    <option value="transit">En transit</option>
-    <option value="termine">Terminé</option>
-  </select>
-  <p id="adminOrderStatusMsg" class="tiny muted" style="margin-top:6px;"></p>
-</div>
+    <hr style="margin:12px 0; opacity:.2;" />
+
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <label class="tiny muted" for="adminOrderStatus"><strong>Statut :</strong></label>
+
+      <select id="adminOrderStatus" class="input" style="max-width:260px;">
+        <option value="preparation">En préparation</option>
+        <option value="transit">En transit</option>
+        <option value="termine">Terminé</option>
+    </select>
+
+      <span id="adminOrderStatusMsg" class="tiny muted"></span>
+    </div>
+
 
 
     <div style="margin-top:14px;">
@@ -188,6 +193,14 @@ function renderOrderDetail(order) {
       <pre style="white-space:pre-wrap; font-size:12px;">${escapeHTML(JSON.stringify(order, null, 2))}</pre>
     </details>
   `;
+
+    // mémorise l'id courant pour le PATCH status
+  window.__ADMIN_CURRENT_ORDER_ID__ = order.id;
+
+  // set la valeur du select
+  const sel = document.getElementById('adminOrderStatus');
+  if (sel) sel.value = order.status || 'preparation';
+
 
   els.adminOrderDetail.classList.remove("hidden");
 }
@@ -2681,4 +2694,19 @@ async function init() {
   }
 
 init();
+
+document.addEventListener('change', async (e) => {
+  if (e.target && e.target.id === 'adminOrderStatus') {
+    const status = e.target.value;
+    const msgEl = document.getElementById('adminOrderStatusMsg');
+
+    try {
+      if (msgEl) msgEl.textContent = 'Mise à jour...';
+      await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
+      if (msgEl) msgEl.textContent = '✅ Statut mis à jour + mail envoyé';
+    } catch (err) {
+      if (msgEl) msgEl.textContent = '❌ ' + (err?.message || 'Erreur');
+    }
+  }
+});
 
