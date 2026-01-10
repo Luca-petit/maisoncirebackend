@@ -1791,12 +1791,20 @@ if (openOrderId) {
   // 1) mémorise l'orderId pour le dropdown
   window.__ADMIN_CURRENT_ORDER_ID__ = openOrderId;
 
-  // 2) charge le détail
+  try {
   const data = await apiAdminLoadOrder(openOrderId);
   const order = data.order;
-
-  // 3) render le détail
   renderOrderDetail(order);
+
+  window.__ADMIN_CURRENT_ORDER_ID__ = openOrderId;
+
+  const sel = document.getElementById("adminOrderStatus");
+  if (sel) sel.value = order.status || "preparation";
+} catch (err) {
+  console.error("ADMIN ORDER OPEN ERROR:", err);
+  if (els.adminOrdersMsg) els.adminOrdersMsg.textContent = "❌ " + (err?.message || "Erreur chargement commande");
+}
+
 
   // 4) set la valeur du select (après render, sinon l’élément n’existe pas)
   const sel = document.getElementById("adminOrderStatus");
@@ -2724,28 +2732,20 @@ async function init() {
 
 init();
 
-document.addEventListener('change', async (e) => {
-  if (e.target && e.target.id === 'adminOrderStatus') {
-    const status = e.target.value;
-    const msgEl = document.getElementById('adminOrderStatusMsg');
+document.addEventListener("change", async (e) => {
+  if (e.target?.id !== "adminOrderStatus") return;
 
-    try {
-      if (msgEl) msgEl.textContent = 'Mise à jour...';
+  const status = e.target.value;
+  const msgEl = document.getElementById("adminOrderStatusMsg");
 
-      await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
-
-      // ✅ ICI EXACTEMENT
-      if (status === 'termine') {
-        renderOrderDetail(null);   // ferme le détail
-        await loadAdminOrders();   // recharge la liste (elle disparaît)
-        return;                    // on s’arrête là
-      }
-
-      if (msgEl) msgEl.textContent = '✅ Statut mis à jour + mail envoyé';
-
-    } catch (err) {
-      if (msgEl) msgEl.textContent = '❌ ' + (err?.message || 'Erreur');
-    }
+  try {
+    if (msgEl) msgEl.textContent = "Mise à jour...";
+    await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
+    if (msgEl) msgEl.textContent = "✅ Statut mis à jour";
+    await loadAdminOrders(); // optionnel: refresh liste
+  } catch (err) {
+    if (msgEl) msgEl.textContent = "❌ " + (err?.message || "Erreur");
   }
 });
+
 

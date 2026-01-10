@@ -233,6 +233,103 @@ app.delete('/api/admin/reviews/product/:productId', requireAdmin, async (req, re
   res.json({ ok: true });
 });
 
+function requireAdmin(req, res, next) {
+  const key = String(req.headers["x-admin-key"] || "");
+  const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
+  if (key !== ADMIN_KEY) return res.status(401).json({ error: "unauthorized" });
+  next();
+}
+
+function countItems(cart){
+  const skus = cart?.skus || {};
+  const packs = cart?.packs || [];
+  const giftcards = cart?.giftcards || [];
+  const singlesCount = Object.values(skus).reduce((a,b)=>a+(Number(b)||0),0);
+  return singlesCount + packs.length + giftcards.length;
+}
+
+// ------- Admin Orders -------
+
+// helper : compter les articles d’une commande
+function countItems(cart) {
+  const skus = cart?.skus || {};
+  const packs = cart?.packs || [];
+  const giftcards = cart?.giftcards || [];
+  const singles = Object.values(skus).reduce((a, b) => a + (Number(b) || 0), 0);
+  return singles + packs.length + giftcards.length;
+}
+
+// ✅ Liste des commandes (admin)
+// /api/admin/orders
+// /api/admin/orders?include_done=1
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  const includeDone = String(req.query.include_done || '0') === '1';
+
+  let q = supabase
+    .from('orders')
+    .select('id,created_at,total,status,cart')
+    .order('created_at', { ascending: false });
+
+  if (!includeDone) {
+    q = q.neq('status', 'termine');
+  }
+
+  const { data, error } = await q;
+  if (error) return res.status(500).json({ error: error.message });
+
+  const orders = (data || []).map(o => ({
+    id: o.id,
+    created_at: o.created_at,
+    total: Number(o.total) || 0,
+    status: o.status || 'preparation',
+    items_count: countItems(o.cart)
+  }));
+
+  res.json({ orders });
+});
+
+// ✅ Détail d’une commande
+app.get('/api/admin/orders/:id', requireAdmin, async (req, res) => {
+  const id = String(req.params.id || '').trim();
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) {
+    return res.status(404).json({ error: 'Commande introuvable' });
+  }
+
+  res.json({ order: data });
+});
+
+// ✅ Mise à jour du statut + (plus tard) mail
+app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const status = String(req.body?.status || '').trim();
+
+  const allowed = ['preparation', 'transit', 'termine'];
+  if (!allowed.includes(status)) {
+    return res.status(400).json({ error: 'Statut invalide' });
+  }
+
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error) return res.status(500).json({ error: error.message });
+
+  // 👉 ici plus tard : envoi du mail selon status
+
+  res.json({ order: data });
+});
+
+
 
 // ------- Notify subscriptions -------
 app.post('/api/notify/:productId', async (req, res) => {
