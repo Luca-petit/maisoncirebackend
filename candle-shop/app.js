@@ -212,7 +212,7 @@ async function loadAdminOrders() {
   els.adminOrdersList.innerHTML = "";
 
   try {
-    const data = await apiAdminLoadOrders();
+    const data = await apiAdminLoadOrders(showFinishedOrders ? "archive" : "");
     let orders = data.orders || []; // ✅ let (pas const)
 
     // ✅ FILTRE ICI (ETAPE 3)
@@ -378,11 +378,13 @@ async function apiLoadCart() {
   return data?.cart || null;
 }
 
-async function apiAdminLoadOrders() {
-  return apiFetch('/api/admin/orders', {
+async function apiAdminLoadOrders(mode = "") {
+  const qs = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+  return apiFetch(`/api/admin/orders${qs}`, {
     headers: { 'x-admin-key': getAdminKey() }
   });
 }
+
 
 async function apiAdminLoadOrder(orderId) {
   return apiFetch(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
@@ -2160,7 +2162,8 @@ if (els.adminLogin) {
     await loadAdminOrders();
 
     // si elle est terminée, on ferme le détail
-    if ( status === 'termine') renderOrderDetail(null);
+    renderOrderDetail(null);
+
 
 
     if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);

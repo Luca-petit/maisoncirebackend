@@ -313,19 +313,37 @@ app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
 
 
 // 2) Détail complet d’une commande
-app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
-  const id = String(req.params.id || "").trim();
-  if (!id) return res.status(400).json({ error: "id required" });
+// 1) Liste commandes (resume) + mode archive
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  const mode = String(req.query?.mode || "").trim(); // "" | "archive"
 
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("id", id)
-    .single();
+  let q = supabase
+    .from('orders')
+    .select('id,created_at,email,total,status,delivery_mode,payment_mode,cart')
+    .order('created_at', { ascending: false });
+
+  // ✅ si archive => uniquement terminées, sinon => tout sauf terminées
+  if (mode === "archive") q = q.eq('status', 'termine');
+  else q = q.neq('status', 'termine');
+
+  const { data, error } = await q;
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json({ order: data });
+
+  const orders = (data || []).map(o => ({
+    id: o.id,
+    created_at: o.created_at,
+    total: Number(o.total) || 0,
+    status: o.status || 'preparation',
+    items_count: countCartItems(o.cart),
+    email: o.email || "",
+    delivery_mode: o.delivery_mode || "",
+    payment_mode: o.payment_mode || "",
+  }));
+
+  res.json({ orders });
 });
+
 
 function statusLabel(status) {
   if (status === 'preparation') return 'en cours de préparation';
