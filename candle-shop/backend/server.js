@@ -285,17 +285,7 @@ function countCartItems(cart) {
   return singlesCount + packsUnits + giftCount;
 }
 
-// 1) Liste commandes (resume)
-app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
-  const { data, error } = await supabase
-    .from("orders")
-    .select("id,created_at,total,cart,email,delivery_mode,payment_mode")
-    .order("created_at", { ascending: false })
-    .limit(200);
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  const orders = (data || []).map(o => ({
+const orders = (data || []).map(o => ({
     id: o.id,
     created_at: o.created_at,
     total: Number(o.total) || 0,
@@ -305,8 +295,17 @@ app.get("/api/admin/orders", requireAdmin, async (_req, res) => {
     payment_mode: o.payment_mode || "",
   }));
 
-  res.json({ orders });
+// 1) Liste commandes (resume)
+app.get('/api/admin/orders', requireAdmin, async (_req, res) => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id,created_at,email,total,status')
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ orders: data || [] });
 });
+
 
 // 2) Détail complet d’une commande
 app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
@@ -321,6 +320,125 @@ app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({ order: data });
+});
+
+function statusLabel(status) {
+  if (status === 'preparation') return 'en cours de préparation';
+  if (status === 'transit') return 'expédiée / en cours de livraison';
+  if (status === 'termine') return 'livrée';
+  return status;
+}
+
+function buildOrderSummaryText(order) {
+  // order.cart = { skus, packs, giftcards } (déjà chez toi)
+  const cart = order.cart || {};
+  const lines = [];
+
+  const skus = cart.skus || {};
+  for (const [pid, qty] of Object.entries(skus)) {
+    lines.push(`- ${pid} ×${qty}`);
+  }
+
+  for (const p of (cart.packs || [])) {
+    const items = (p.items || []).map(it => `${it.id}×${it.qty}`).join(', ');
+    lines.push(`- ${p.name || 'Pack'} (${items}) = ${Number(p.total || 0).toFixed(2)}€`);
+  }
+
+  for (const gc of (cart.giftcards || [])) {
+    lines.push(`- Carte cadeau ${Number(gc.amount || 0).toFixed(2)}€ (${gc.receiver || ''})`);
+  }
+
+  return lines.length ? lines.join('\n') : '(panier vide)';
+}
+
+function buildOrderSummaryHtml(order) {
+  const cart = order.cart || {};
+  const parts = [];
+
+  const skus = cart.skus || {};
+  for (const [pid, qty] of Object.entries(skus)) {
+    parts.push(`<li><strong>${pid}</strong> ×${qty}</li>`);
+  }
+
+  for (const p of (cart.packs || [])) {
+    const items = (p.items || []).map(it => `${it.id}×${it.qty}`).join(', ');
+    parts.push(`<li><strong>${p.name || 'Pack'}</strong> (${items}) — <strong>${Number(p.total || 0).toFixed(2)}€</strong></li>`);
+  }
+
+  for (const gc of (cart.giftcards || [])) {
+    parts.push(`<li><strong>Carte cadeau</strong> ${Number(gc.amount || 0).toFixed(2)}€ — ${gc.receiver || ''}</li>`);
+  }
+
+  return `<ul>${parts.join('')}</ul>`;
+}
+
+app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
+  const id = String(req.params.id || '').trim();
+  const nextStatus = String(req.body?.status || '').trim();
+
+  const allowed = new Set(['preparation', 'transit', 'termine']);
+  if (!id) return res.status(400).json({ error: 'id required' });
+  if (!allowed.has(nextStatus)) return res.status(400).json({ error: 'bad status' });
+
+  // 1) récupérer la commande
+  const { data: order, error: getErr } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (getErr) return res.status(500).json({ error: getErr.message });
+
+  // 2) update DB
+  const { data: updated, error: upErr } = await supabase
+    .from('orders')
+    .update({ status: nextStatus })
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (upErr) return res.status(500).json({ error: upErr.message });
+
+  // 3) email client
+  const to = String(updated.email || '').trim();
+  if (to) {
+    const label = statusLabel(nextStatus);
+
+    const subject =
+      nextStatus === 'preparation' ? 'Votre commande est en préparation — Maison Cire'
+      : nextStatus === 'transit' ? 'Votre commande a été expédiée — Maison Cire'
+      : 'Votre commande est livrée — Maison Cire';
+
+    const total = Number(updated.total || 0).toFixed(2);
+
+    const text = [
+      `Bonjour,`,
+      ``,
+      `Statut : ${label}`,
+      `Commande : ${updated.id}`,
+      `Total : ${total} €`,
+      ``,
+      `Récapitulatif :`,
+      buildOrderSummaryText(updated),
+      ``,
+      `Merci,`,
+      `Maison Cire`
+    ].join('\n');
+
+    const html = `
+      <p>Bonjour,</p>
+      <p><strong>Statut :</strong> ${label}</p>
+      <p><strong>Commande :</strong> ${updated.id}<br/>
+         <strong>Total :</strong> ${total} €</p>
+      <h3 style="margin:16px 0 8px;">Récapitulatif</h3>
+      ${buildOrderSummaryHtml(updated)}
+      <p style="margin-top:16px;">Merci,<br/>Maison Cire</p>
+    `;
+
+    await sendOrderEmail({ to, subject, html, text });
+  }
+
+  res.json({ order: updated });
 });
 
 

@@ -163,6 +163,17 @@ function renderOrderDetail(order) {
       <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
     </div>
 
+    <div style="margin-top:10px;">
+  <label class="tiny muted">Statut</label>
+  <select id="adminOrderStatus" class="input" style="margin-top:6px;">
+    <option value="preparation">En préparation</option>
+    <option value="transit">En transit</option>
+    <option value="termine">Terminé</option>
+  </select>
+  <p id="adminOrderStatusMsg" class="tiny muted" style="margin-top:6px;"></p>
+</div>
+
+
     <div style="margin-top:14px;">
       <h5>Articles</h5>
       <ul>
@@ -341,20 +352,25 @@ async function apiLoadCart() {
 }
 
 async function apiAdminLoadOrders() {
-  const adminKey = getAdminKey();
-  const data = await apiFetch("/api/admin/orders", {
-    headers: { "x-admin-key": adminKey }
+  return apiFetch('/api/admin/orders', {
+    headers: { 'x-admin-key': getAdminKey() }
   });
-  return Array.isArray(data?.orders) ? data.orders : [];
 }
 
-async function apiAdminLoadOrderDetail(orderId) {
-  const adminKey = getAdminKey();
-  const data = await apiFetch(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
-    headers: { "x-admin-key": adminKey }
+async function apiAdminLoadOrder(orderId) {
+  return apiFetch(`/api/admin/orders/${encodeURIComponent(orderId)}`, {
+    headers: { 'x-admin-key': getAdminKey() }
   });
-  return data?.order || null;
 }
+
+async function apiAdminUpdateOrderStatus(orderId, status) {
+  return apiFetch(`/api/admin/orders/${encodeURIComponent(orderId)}/status`, {
+    method: 'PATCH',
+    headers: { 'x-admin-key': getAdminKey() },
+    body: JSON.stringify({ status })
+  });
+}
+
 
 
 async function apiAddReview(productId, payload) {
@@ -1735,10 +1751,22 @@ document.addEventListener("click", async (e) => {
     return;
   }
 
-  const openOrderId = e.target?.closest?.("[data-admin-order-open]")?.dataset?.adminOrderOpen;
+ const openOrderId = e.target?.closest?.("[data-admin-order-open]")?.dataset?.adminOrderOpen;
 if (openOrderId) {
-  const order = await apiAdminLoadOrderDetail(openOrderId);
+  // 1) mémorise l'orderId pour le dropdown
+  window.__ADMIN_CURRENT_ORDER_ID__ = openOrderId;
+
+  // 2) charge le détail
+  const data = await apiAdminLoadOrder(openOrderId);
+  const order = data.order;
+
+  // 3) render le détail
   renderOrderDetail(order);
+
+  // 4) set la valeur du select (après render, sinon l’élément n’existe pas)
+  const sel = document.getElementById("adminOrderStatus");
+  if (sel) sel.value = order.status || "preparation";
+
   return;
 }
 
@@ -2174,6 +2202,20 @@ if (els.adminReset) {
     msg(els.adminSaveMsg, "Reset effectué ✅");
   });
 }
+
+document.getElementById("adminOrderStatus")?.addEventListener("change", async (e) => {
+  const status = e.target.value;
+  const msgEl = document.getElementById("adminOrderStatusMsg");
+
+  try {
+    if (msgEl) msgEl.textContent = "Mise à jour...";
+    await apiAdminUpdateOrderStatus(window.__ADMIN_CURRENT_ORDER_ID__, status);
+    if (msgEl) msgEl.textContent = "✅ Statut mis à jour + mail envoyé";
+  } catch (err) {
+    if (msgEl) msgEl.textContent = "❌ " + (err?.message || "Erreur");
+  }
+});
+
 
 /* Pack Wizard bindings */
 if (els.packGoStep2) {

@@ -6,10 +6,6 @@ function getSessionId() {
   return localStorage.getItem(SESSION_KEY) || "";
 }
 
-function getDeliveryFee() {
-  return els.coDelivery?.value === "home" ? 4 : 0;
-}
-
 async function apiFetch(path, opts = {}) {
   const url = (API_BASE ? API_BASE : "") + path;
   const res = await fetch(url, {
