@@ -17,11 +17,10 @@ export function getMailer() {
   });
 }
 
-export async function sendOrderEmail({ to, subject, html, text }) {
-  const transporter = getMailer();
-  if (!transporter) return { skipped: true };
+export async function sendMail({ to, subject, text, html }) {
+  console.log('📧 Mail simulé');
+  console.log({ to, subject, text, html });
 
-  const from = process.env.MAIL_FROM || 'no-reply@maisoncire.local';
-  const info = await transporter.sendMail({ from, to, subject, html, text });
-  return { messageId: info.messageId };
+  // plus tard : nodemailer / resend / mailjet etc
+  return true;
 }
