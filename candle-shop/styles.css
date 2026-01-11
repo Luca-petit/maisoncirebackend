@@ -2923,3 +2923,90 @@ a,
   padding: 14px;
   background: #fff;
 }
+
+
+.home{
+  position: relative;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap: 8px;
+
+  padding: 12px 16px ;
+  border-radius: 999px;
+  margin: 30px;
+
+  border: 1px solid rgba(18,19,26,.12);
+  background: rgba(255,255,255,.94);
+  color: var(--text);
+
+  cursor:pointer;
+  font-weight: 950;
+  font-size: 14px;
+
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--speed) var(--ease), box-shadow var(--speed) var(--ease), background var(--speed) var(--ease), border-color var(--speed) var(--ease);
+  overflow:hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+  
+.home:hover{
+  background-color: grey;
+  color: #fbfcff;
+}
+
+
+/* =========================
+   ACCOUNT — Auth Tabs
+========================= */
+
+#authBox .row {
+  gap: 12px !important;
+}
+
+#tabLogin, #tabSignup{
+  border-radius: 999px;
+  padding: 10px 18px;
+  font-weight: 700;
+  letter-spacing: .2px;
+  border: 1px solid rgba(0,0,0,.12);
+  background: transparent;
+  color: rgba(0,0,0,.72);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease, color .12s ease, box-shadow .12s ease;
+}
+
+/* Hover / click */
+#tabLogin:hover, #tabSignup:hover{
+  transform: translateY(-1px);
+  border-color: rgba(0,0,0,.22);
+}
+
+/* ✅ Onglet actif (bien visible) */
+#tabLogin.is-active,
+#tabSignup.is-active{
+  background: #111;
+  color: #fff;
+  border-color: #111;
+  box-shadow: 0 10px 24px rgba(0,0,0,.14);
+}
+
+/* Onglet inactif = “outline” */
+#tabLogin:not(.is-active),
+#tabSignup:not(.is-active){
+  background: rgba(255,255,255,.55);
+}
+
+/* Petit underline style “tab” (optionnel, mais joli) */
+#authBox .row{
+  position: relative;
+  padding-bottom: 10px;
+}
+#authBox .row::after{
+  content:"";
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  height:1px;
+  background: rgba(0,0,0,.08);
+}

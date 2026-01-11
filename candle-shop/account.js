@@ -38,6 +38,30 @@
   const elMyOrdersMsg = document.getElementById("myOrdersMsg");
   const elMyOrdersList = document.getElementById("myOrdersList");
 
+const hamburger = document.getElementById("hamburger");
+  const nav = document.getElementById("nav");
+  if (!hamburger || !nav) return;
+
+  // évite double-binding si le script est exécuté 2 fois
+  if (hamburger.dataset.bound === "1") return;
+  hamburger.dataset.bound = "1";
+
+  function setMenuOpen(open) {
+    nav.classList.toggle("open", open);
+    nav.classList.toggle("is-open", open);
+    hamburger.classList.toggle("is-open", open);
+    hamburger.setAttribute("aria-expanded", String(open));
+  }
+
+  hamburger.addEventListener("click", () => {
+    const isOpen = nav.classList.contains("open") || nav.classList.contains("is-open");
+    setMenuOpen(!isOpen);
+  });
+
+  nav.querySelectorAll("a").forEach(a => {
+    a.addEventListener("click", () => setMenuOpen(false));
+  });
+
   // Admin section in account.html
   const elAdminSection = document.getElementById("admin");
 
@@ -259,6 +283,23 @@
   // ---- Events ----
   elTabLogin?.addEventListener("click", () => showTab("login"));
   elTabSignup?.addEventListener("click", () => showTab("signup"));
+
+  function setActiveTab(which){
+  const loginBtn = document.getElementById("tabLogin");
+  const signupBtn = document.getElementById("tabSignup");
+  if (!loginBtn || !signupBtn) return;
+
+  loginBtn.classList.toggle("is-active", which === "login");
+  signupBtn.classList.toggle("is-active", which === "signup");
+}
+
+// état initial
+setActiveTab("login");
+
+// quand tu cliques
+document.getElementById("tabLogin")?.addEventListener("click", () => setActiveTab("login"));
+document.getElementById("tabSignup")?.addEventListener("click", () => setActiveTab("signup"));
+
 
   elSignupForm?.addEventListener("submit", async (e) => {
     e.preventDefault();

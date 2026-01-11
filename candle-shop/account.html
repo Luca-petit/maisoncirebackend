@@ -9,25 +9,25 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <header class="header">
-    <div class="header__inner">
-      <a class="brand" href="index.html" aria-label="Retour à l'accueil">
-        <span class="brand__mark">Maison Cire</span>
-      </a>
+    <header class="header">
+    <div class="brand">
+      <span class="brandDot"></span>
+      <span class="brandText">Maison Cire</span>
+    </div>
 
-      <button class="hamburger" id="hamburger" aria-label="Menu" aria-expanded="false" aria-controls="nav">
-        <span></span><span></span><span></span>
+    <nav class="nav" id="nav" aria-label="Navigation">
+      <a href="index.html">Boutique</a>
+      <a href="index.html">Packs</a>
+      <a href="index.html">Carte cadeaux</a>
+    </nav>
+
+    <div class="headerActions">
+      <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+        <span class="hamburger__bars" aria-hidden="true"></span>
       </button>
-
-      <nav class="nav" id="nav" aria-label="Navigation">
-        <a href="index.html#boutique">Boutique</a>
-        <a href="index.html#packs">Packs</a>
-        <a href="index.html#giftcard">Carte cadeaux</a>
-        <a href="index.html#newsletter">Newsletter</a>
-        <a id="accountLink" href="account.html">Connexion</a>
-      </nav>
     </div>
   </header>
+
 
   <main class="main">
     <section class="section reveal" id="account">
@@ -40,7 +40,7 @@
       <div id="authBox" class="adminBox">
         <div class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
           <button type="button" class="btn" id="tabLogin">Se connecter</button>
-          <button type="button" class="btn btn--ghost" id="tabSignup">Créer un compte</button>
+          <button type="button" class="btn btn--ghost" id="tabSignup">S'inscrire</button>
         </div>
 
         <div style="margin-top:12px;" id="authForms">
@@ -50,7 +50,7 @@
             <input class="input" type="email" id="loginEmail" placeholder="email@exemple.com" required />
 
             <label class="tiny muted" style="margin-top:10px;">Mot de passe</label>
-            <input class="input" type="password" id="loginPassword" placeholder="••••••••" required />
+            <input class="input" type="password" id="loginPassword" placeholder="Entrez votre mot de passe" required />
 
             <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
               <button class="btn" type="submit">Connexion</button>
@@ -64,7 +64,7 @@
             <input class="input" type="email" id="signupEmail" placeholder="email@exemple.com" required />
 
             <label class="tiny muted" style="margin-top:10px;">Mot de passe</label>
-            <input class="input" type="password" id="signupPassword" placeholder="6 caractères minimum" required />
+            <input class="input" type="password" id="signupPassword" placeholder="Créez votre mot de passe" required />
 
             <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
               <button class="btn" type="submit">Créer mon compte</button>
@@ -265,19 +265,6 @@
       </div>
     </section>
   </main>
-
-        <!-- Commandes -->
-        <h3 style="margin-top:0;">Commandes</h3>
-        <div class="tiny muted" id="adminOrdersMsg">Chargement...</div>
-        <div id="adminOrdersList" style="margin-top:10px;"></div>
-        <div id="adminOrderDetail" class="hidden" style="margin-top:12px;"></div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="footer">
-    <p class="tiny muted">© <span id="year"></span> Maison Cire</p>
-  </footer>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
