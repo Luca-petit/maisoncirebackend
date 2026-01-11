@@ -1433,21 +1433,23 @@ async function addPackToCart() {
   saveCart(cart);
 
   // sync from backend (best-effort)
-// sync from backend (best-effort)
-try {
-  await ensureSessionId();
-  const [srvProducts, srvSummary] = await Promise.all([
-    apiLoadProducts(),
-    apiLoadReviewSummary()
-  ]);
-
-  if (srvProducts && srvProducts.length) {
-    products = srvProducts;
-    saveProducts(products);
-  }
-  reviewSummary = srvSummary || {};
-} catch (_) {}
-
+  try {
+    await ensureSessionId();
+    const [srvProducts, srvSummary, srvCart] = await Promise.all([
+      apiLoadProducts(),
+      apiLoadReviewSummary(),
+      apiLoadCart()
+    ]);
+    if (srvProducts && srvProducts.length) {
+      products = srvProducts;
+      saveProducts(products);
+    }
+    reviewSummary = srvSummary || {};
+    if (srvCart) {
+      cart = srvCart;
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    }
+  } catch (_) {}
 
   renderProducts();
   renderCartBadge();

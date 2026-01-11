@@ -1,495 +1,576 @@
-// backend/server.js
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { createClient } from "@supabase/supabase-js";
-import nodemailer from "nodemailer";
+// Maison Cire — backend/server.js (clean)
+// ✅ Products + Cart + Orders + Reviews + Notify + Admin + Auth (email/password)
 
-dotenv.config();
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+import { supabase } from './supabase.js';
+import { sendMail } from './mailer.js';
 
 const app = express();
+
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
-// -------------------- ENV --------------------
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// ---------- Config ----------
+const ADMIN_KEY = (process.env.ADMIN_KEY || '').trim();
+const JWT_SECRET = (process.env.JWT_SECRET || 'dev_jwt_secret_change_me').trim();
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30d';
 
-// Clé admin (doit matcher ton front qui envoie "x-admin-key")
-const ADMIN_KEY = process.env.ADMIN_KEY || "admin123";
-
-// Mail (optionnel)
-const SMTP_HOST = process.env.SMTP_HOST;
-const SMTP_PORT = Number(process.env.SMTP_PORT || 587);
-const SMTP_USER = process.env.SMTP_USER;
-const SMTP_PASS = process.env.SMTP_PASS;
-const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
-
-// -------------------- SUPABASE --------------------
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  console.error("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in env");
+// ---------- Small utils ----------
+function ok(res, payload) {
+  res.json(payload);
 }
-const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// -------------------- HELPERS --------------------
-function requireAdmin(req, res, next) {
-  const key = String(req.headers["x-admin-key"] || "").trim();
-  if (!key || key !== ADMIN_KEY) {
-    return res.status(401).json({ error: "Unauthorized" });
+function bad(res, status, message) {
+  res.status(status).json({ error: message });
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function countItemsInCart(cart) {
+  if (!cart || typeof cart !== 'object') return 0;
+  const skus = cart.skus && typeof cart.skus === 'object' ? cart.skus : {};
+  const packs = Array.isArray(cart.packs) ? cart.packs : [];
+  const giftcards = Array.isArray(cart.giftcards) ? cart.giftcards : [];
+  return Object.values(skus).reduce((a, b) => a + (Number(b) || 0), 0) + packs.length + giftcards.length;
+}
+
+// ---------- Auth (JWT) ----------
+function signToken(user) {
+  const payload = {
+    sub: user.id,
+    email: user.email,
+    role: user.role,
+  };
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+}
+
+function readBearer(req) {
+  const h = String(req.headers.authorization || '');
+  if (!h.toLowerCase().startsWith('bearer ')) return '';
+  return h.slice(7).trim();
+}
+
+function looksLikeJwt(s) {
+  const parts = String(s || '').split('.');
+  return parts.length === 3 && parts.every(Boolean);
+}
+
+function verifyToken(token) {
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
   }
+}
+
+function getAuthUser(req) {
+  // 1) Authorization: Bearer <jwt>
+  const bearer = readBearer(req);
+  const p1 = verifyToken(bearer);
+  if (p1) return p1;
+
+  // 2) Compatibility: x-admin-key might contain a JWT
+  const x = String(req.headers['x-admin-key'] || '').trim();
+  if (looksLikeJwt(x)) {
+    const p2 = verifyToken(x);
+    if (p2) return p2;
+  }
+
+  return null;
+}
+
+function requireAuth(req, res, next) {
+  const u = getAuthUser(req);
+  if (!u?.email) return bad(res, 401, 'Non connecté');
+  req.user = u;
   next();
 }
 
-function safeCart(obj) {
-  if (!obj || typeof obj !== "object") return { skus: {}, packs: [], giftcards: [] };
-  return {
-    skus: obj.skus && typeof obj.skus === "object" ? obj.skus : {},
-    packs: Array.isArray(obj.packs) ? obj.packs : [],
-    giftcards: Array.isArray(obj.giftcards) ? obj.giftcards : [],
-  };
+function requireAdmin(req, res, next) {
+  // legacy admin key
+  const key = String(req.headers['x-admin-key'] || '').trim();
+  if (ADMIN_KEY && key && key === ADMIN_KEY) return next();
+
+  // jwt admin
+  const u = getAuthUser(req);
+  if (u?.role === 'admin') {
+    req.user = u;
+    return next();
+  }
+  return bad(res, 401, 'Admin requis');
 }
 
-function countItems(cart) {
-  const c = safeCart(cart);
-  const singles = Object.values(c.skus).reduce((a, b) => a + (Number(b) || 0), 0);
-  return singles + c.packs.length + c.giftcards.length;
-}
-
-async function sendOrderEmail({ to, subject, html, text }) {
-  // Email optionnel : si pas configuré, on skip
-  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS || !SMTP_FROM) return;
-
-  const transporter = nodemailer.createTransport({
-    host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_PORT === 465,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
-  });
-
-  await transporter.sendMail({
-    from: SMTP_FROM,
-    to,
-    subject,
-    text: text || "",
-    html: html || "",
-  });
-}
-
-// -------------------- HEALTH --------------------
-app.get("/", (req, res) => res.json({ ok: true }));
-
-// =======================================================
-// PRODUCTS
-// =======================================================
-app.get("/api/products", async (req, res) => {
-  const { data, error } = await supabase
-    .from("products")
-    .select("*")
-    .order("name", { ascending: true });
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ products: data || [] });
-});
-
-// Admin: create product
-app.post("/api/admin/products", requireAdmin, async (req, res) => {
-  const payload = req.body || {};
-  if (!payload?.id || !payload?.name) {
-    return res.status(400).json({ error: "id + name requis" });
-  }
-
-  const { data, error } = await supabase
-    .from("products")
-    .insert([payload])
-    .select("*")
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ product: data });
-});
-
-// Admin: patch product
-app.patch("/api/admin/products/:id", requireAdmin, async (req, res) => {
-  const id = String(req.params.id || "").trim();
-  const patch = req.body || {};
-  if (!id) return res.status(400).json({ error: "bad id" });
-
-  const { data, error } = await supabase
-    .from("products")
-    .update(patch)
-    .eq("id", id)
-    .select("*")
-    .single();
-
-  if (error || !data) return res.status(500).json({ error: error?.message || "update failed" });
-  res.json({ product: data });
-});
-
-// Admin: delete product
-app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
-  const id = String(req.params.id || "").trim();
-  if (!id) return res.status(400).json({ error: "bad id" });
-
-  const { error } = await supabase.from("products").delete().eq("id", id);
-  if (error) return res.status(500).json({ error: error.message });
-
-  res.json({ ok: true });
-});
-
-// =======================================================
-// REVIEWS
-// =======================================================
-app.get("/api/reviews/summary", async (req, res) => {
-  // Retourne un map { [productId]: {avg, count} }
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("product_id,rating");
-
-  if (error) return res.status(500).json({ error: error.message });
-
-  const summary = {};
-  for (const r of data || []) {
-    const pid = r.product_id;
-    if (!summary[pid]) summary[pid] = { sum: 0, count: 0 };
-    summary[pid].sum += Number(r.rating) || 0;
-    summary[pid].count += 1;
-  }
-
-  const out = {};
-  for (const [pid, v] of Object.entries(summary)) {
-    out[pid] = {
-      avg: v.count ? v.sum / v.count : 0,
-      count: v.count,
-    };
-  }
-
-  res.json({ summary: out });
-});
-
-app.get("/api/reviews/:productId", async (req, res) => {
-  const productId = String(req.params.productId || "").trim();
-
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("*")
-    .eq("product_id", productId)
-    .order("created_at", { ascending: false });
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ reviews: data || [] });
-});
-
-app.post("/api/reviews/:productId", async (req, res) => {
-  const productId = String(req.params.productId || "").trim();
-  const { name, rating, text } = req.body || {};
-
-  if (!name || !rating) {
-    return res.status(400).json({ error: "name + rating requis" });
-  }
-
-  const payload = {
-    product_id: productId,
-    name: String(name).trim(),
-    rating: Number(rating),
-    text: String(text || ""),
-  };
-
-  const { data, error } = await supabase
-    .from("reviews")
-    .insert([payload])
-    .select("*")
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ review: data });
-});
-
-// Admin reviews: delete one
-app.delete("/api/admin/reviews/:reviewId", requireAdmin, async (req, res) => {
-  const reviewId = String(req.params.reviewId || "").trim();
-  if (!reviewId) return res.status(400).json({ error: "bad id" });
-
-  const { error } = await supabase.from("reviews").delete().eq("id", reviewId);
-  if (error) return res.status(500).json({ error: error.message });
-
-  res.json({ ok: true });
-});
-
-// Admin reviews: clear by product
-app.delete("/api/admin/reviews/product/:productId", requireAdmin, async (req, res) => {
-  const productId = String(req.params.productId || "").trim();
-  if (!productId) return res.status(400).json({ error: "bad product id" });
-
-  const { error } = await supabase.from("reviews").delete().eq("product_id", productId);
-  if (error) return res.status(500).json({ error: error.message });
-
-  res.json({ ok: true });
-});
-
-// ------- Checkout: create order -------
-app.post("/api/checkout/:sessionId", async (req, res) => {
+// ---------- Auth routes ----------
+app.post('/api/auth/signup', async (req, res) => {
   try {
-    const sid = String(req.params.sessionId || "").trim();
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || '');
+    if (!email || !email.includes('@')) return bad(res, 400, 'Email invalide');
+    if (password.length < 6) return bad(res, 400, 'Mot de passe trop court (min 6)');
 
-    const email = String(req.body?.email || "").trim().toLowerCase();
-    const phone = String(req.body?.phone || "").trim() || null;
+    const { data: existing, error: exErr } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (exErr) throw exErr;
+    if (existing?.id) return bad(res, 409, 'Un compte existe déjà avec cet email');
 
-    // delivery_mode: 'pickup' | 'shipping'
-    const delivery_mode = String(req.body?.delivery_mode || "pickup").trim();
-    // payment_mode: 'cash' | 'transfer'
-    const payment_mode = String(req.body?.payment_mode || "transfer").trim();
-
-    const address = req.body?.address && typeof req.body.address === "object" ? req.body.address : null;
-    const delivery_fee = Number(req.body?.delivery_fee || 0) || 0;
-
-    if (!email || !email.includes("@")) {
-      return res.status(400).json({ error: "email invalid" });
-    }
-
-    // (optionnel) validations basiques
-    if (!["pickup", "shipping"].includes(delivery_mode)) {
-      return res.status(400).json({ error: "delivery_mode invalid" });
-    }
-    if (!["cash", "transfer"].includes(payment_mode)) {
-      return res.status(400).json({ error: "payment_mode invalid" });
-    }
-
-    // 1) récup panier depuis carts
-    const { data: cartRow, error: cartErr } = await supabase
-      .from("carts")
-      .select("cart")
-      .eq("session_id", sid)
+    const password_hash = await bcrypt.hash(password, 10);
+    const { data: created, error: cErr } = await supabase
+      .from('users')
+      .insert({ email, password_hash, role: 'user' })
+      .select('id,email,role')
       .single();
+    if (cErr) throw cErr;
 
-    if (cartErr) return res.status(404).json({ error: "cart not found" });
+    const token = signToken(created);
+    return ok(res, { token, user: { email: created.email, role: created.role } });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur signup');
+  }
+});
 
-    const cart = cartRow?.cart || { skus: {}, packs: [], giftcards: [] };
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || '');
+    if (!email || !password) return bad(res, 400, 'Email et mot de passe requis');
 
-    // 2) total server-side
-    const skuIds = Object.keys(cart.skus || {});
-    let priceMap = {};
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id,email,role,password_hash')
+      .eq('email', email)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user?.id) return bad(res, 401, 'Identifiants invalides');
 
-    if (skuIds.length) {
-      const { data: prod, error: prodErr } = await supabase
-        .from("products")
-        .select("id,price")
-        .in("id", skuIds);
+    const okPwd = await bcrypt.compare(password, user.password_hash || '');
+    if (!okPwd) return bad(res, 401, 'Identifiants invalides');
 
-      if (prodErr) return res.status(500).json({ error: prodErr.message });
+    const token = signToken(user);
+    return ok(res, { token, user: { email: user.email, role: user.role } });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur login');
+  }
+});
 
-      priceMap = Object.fromEntries((prod || []).map(p => [p.id, Number(p.price) || 0]));
-    }
+app.get('/api/auth/me', (req, res) => {
+  const u = getAuthUser(req);
+  if (!u?.email) return bad(res, 401, 'Non connecté');
+  return ok(res, { user: { email: u.email, role: u.role || 'user' } });
+});
 
-    let total = 0;
+// Orders for logged-in user (by email)
+app.get('/api/account/orders', requireAuth, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.user.email);
+    const { data, error } = await supabase
+      .from('orders')
+      .select('id, email, total, status, created_at, delivery_mode, payment_mode, cart')
+      .eq('email', email)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return ok(res, { orders: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur chargement commandes');
+  }
+});
 
-    // singles
-    for (const [id, qty] of Object.entries(cart.skus || {})) {
-      total += (priceMap[id] || 0) * (Number(qty) || 0);
-    }
+// ---------- Products ----------
+app.get('/api/products', async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return ok(res, { products: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur produits');
+  }
+});
 
-    // packs: on prend pack.total si présent sinon pack.value - pack.free
-    for (const pack of (cart.packs || [])) {
-      const packTotal = Number(pack.total ?? ((Number(pack.value || 0) - Number(pack.free || 0)))) || 0;
-      total += packTotal;
-    }
+// ---------- Cart ----------
+app.post('/api/cart/init', async (_req, res) => {
+  try {
+    const session_id = `sid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const { error } = await supabase.from('carts').insert({ session_id });
+    if (error) throw error;
+    return ok(res, { session_id });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur init panier');
+  }
+});
 
-    // giftcards
-    for (const gc of (cart.giftcards || [])) total += Number(gc.amount || 0);
+app.get('/api/cart/:sessionId', async (req, res) => {
+  try {
+    const sid = String(req.params.sessionId || '').trim();
+    if (!sid) return bad(res, 400, 'sessionId manquant');
 
-    // frais livraison
-    total += delivery_fee;
+    const { data, error } = await supabase
+      .from('carts')
+      .select('cart')
+      .eq('session_id', sid)
+      .maybeSingle();
+    if (error) throw error;
 
-    total = Math.round(total * 100) / 100;
+    return ok(res, { cart: data?.cart || null });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur panier');
+  }
+});
 
-    // 3) insert order
-    const { data: order, error: orderErr } = await supabase
-      .from("orders")
+app.put('/api/cart/:sessionId', async (req, res) => {
+  try {
+    const sid = String(req.params.sessionId || '').trim();
+    const cart = req.body?.cart;
+    if (!sid) return bad(res, 400, 'sessionId manquant');
+    if (!cart || typeof cart !== 'object') return bad(res, 400, 'Cart invalide');
+
+    const { error } = await supabase
+      .from('carts')
+      .upsert({ session_id: sid, cart, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur maj panier');
+  }
+});
+
+// ---------- Orders ----------
+app.post('/api/orders', async (req, res) => {
+  try {
+    const session_id = String(req.body?.session_id || '').trim();
+    const email = normalizeEmail(req.body?.email);
+    const cart = req.body?.cart;
+
+    const phone = String(req.body?.phone || '').trim() || null;
+    const delivery_mode = String(req.body?.delivery_mode || 'pickup').trim();
+    const payment_mode = String(req.body?.payment_mode || 'transfer').trim();
+    const address = req.body?.address && typeof req.body.address === 'object' ? req.body.address : null;
+    const delivery_fee = Number(req.body?.delivery_fee || 0) || 0;
+    const status = String(req.body?.status || 'preparation');
+
+    const total = Number(req.body?.total || 0) || 0;
+    if (!email || !email.includes('@')) return bad(res, 400, 'Email invalide');
+    if (!cart || typeof cart !== 'object') return bad(res, 400, 'Panier invalide');
+
+    const { data, error } = await supabase
+      .from('orders')
       .insert({
-        session_id: sid,
+        session_id,
         email,
         phone,
         delivery_mode,
         payment_mode,
         address,
-        delivery_fee,
-        status: "preparation",
         cart,
         total,
+        delivery_fee,
+        status,
       })
-      .select("id,created_at,total,status")
+      .select('id')
       .single();
+    if (error) throw error;
 
-    if (orderErr) return res.status(500).json({ error: orderErr.message });
+    // (optionnel) email client
+    // await sendMail({ to: email, subject: 'Commande reçue', text: `Merci ! Votre commande #${data.id} est enregistrée.` });
 
-    // (optionnel) vider le panier après commande
-    // await supabase.from("carts").update({ cart: { skus:{}, packs:[], giftcards:[] }, updated_at: new Date().toISOString() }).eq("session_id", sid);
-
-    res.json({ order });
+    return ok(res, { ok: true, order_id: data?.id });
   } catch (e) {
-    res.status(500).json({ error: e?.message || "server error" });
+    return bad(res, 500, e?.message || 'Erreur création commande');
   }
 });
 
-
-// =======================================================
-// NOTIFY (stock alert)
-// =======================================================
-app.post("/api/notify/:productId", async (req, res) => {
-  const productId = String(req.params.productId || "").trim();
-  const email = String(req.body?.email || "").trim().toLowerCase();
-
-  if (!email) return res.status(400).json({ error: "email requis" });
-
-  const payload = { product_id: productId, email };
-
-  const { data, error } = await supabase
-    .from("notify")
-    .upsert([payload], { onConflict: "product_id,email" })
-    .select("*")
-    .single();
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ok: true, row: data });
-});
-
-app.delete("/api/notify/:productId", async (req, res) => {
-  const productId = String(req.params.productId || "").trim();
-  const email = String(req.body?.email || "").trim().toLowerCase();
-
-  if (!email) return res.status(400).json({ error: "email requis" });
-
-  const { error } = await supabase
-    .from("notify")
-    .delete()
-    .eq("product_id", productId)
-    .eq("email", email);
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ ok: true });
-});
-
-// =======================================================
-// CART (session-based)
-// Table attendue: carts { session_id (text), cart (jsonb), updated_at }
-// =======================================================
-app.post("/api/cart/init", async (req, res) => {
-  const session_id = crypto.randomUUID();
-
-  const empty = { skus: {}, packs: [], giftcards: [] };
-
-  const { error } = await supabase
-    .from("carts")
-    .insert([{ session_id, cart: empty }]);
-
-  if (error) return res.status(500).json({ error: error.message });
-  res.json({ session_id });
-});
-
-app.get("/api/cart/:sid", async (req, res) => {
-  const sid = String(req.params.sid || "").trim();
-  if (!sid) return res.status(400).json({ error: "bad sid" });
-
-  const { data, error } = await supabase
-    .from("carts")
-    .select("cart")
-    .eq("session_id", sid)
-    .single();
-
-  if (error || !data) return res.status(404).json({ error: "cart not found" });
-  res.json({ cart: safeCart(data.cart) });
-});
-
-app.put("/api/cart/:sid", async (req, res) => {
-  const sid = String(req.params.sid || "").trim();
-  const cart = safeCart(req.body?.cart);
-
-  const { data, error } = await supabase
-    .from("carts")
-    .update({ cart, updated_at: new Date().toISOString() })
-    .eq("session_id", sid)
-    .select("cart")
-    .single();
-
-  if (error || !data) return res.status(500).json({ error: error?.message || "update failed" });
-  res.json({ cart: safeCart(data.cart) });
-});
-
-// =======================================================
-// ORDERS (ADMIN)
-// Table attendue: orders { id (uuid), created_at, total, status, cart(jsonb), email, delivery_mode, payment_mode }
-// =======================================================
-app.get("/api/admin/orders", requireAdmin, async (req, res) => {
-  const status = String(req.query?.status || "").trim();
-
-  let q = supabase
-    .from("orders")
-    .select("id,created_at,total,status,cart")
-    .order("created_at", { ascending: false });
-
-  if (status) q = q.eq("status", status);
-
-  const { data, error } = await q;
-  if (error) return res.status(500).json({ error: error.message });
-
-  const orders = (data || []).map((o) => ({
-    id: o.id,
-    created_at: o.created_at,
-    total: Number(o.total || 0),
-    status: o.status || "preparation",
-    items_count: countItems(o.cart),
-  }));
-
-  res.json({ orders });
-});
-
-app.get("/api/admin/orders/:id", requireAdmin, async (req, res) => {
-  const id = String(req.params.id || "").trim();
-  if (!id) return res.status(400).json({ error: "bad id" });
-
-  const { data, error } = await supabase
-    .from("orders")
-    .select("*")
-    .eq("id", id)
-    .single();
-
-  if (error || !data) return res.status(404).json({ error: "order not found" });
-  res.json({ order: data });
-});
-
-app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
-  const id = String(req.params.id || "").trim();
-  const status = String(req.body?.status || "").trim();
-
-  const allowed = new Set(["preparation", "transit", "termine"]);
-  if (!allowed.has(status)) return res.status(400).json({ error: "bad status" });
-
-  const { data, error } = await supabase
-    .from("orders")
-    .update({ status })
-    .eq("id", id)
-    .select("*")
-    .single();
-
-  if (error || !data) return res.status(404).json({ error: error?.message || "order not found" });
-
-  // Email best-effort
+// ---------- Reviews ----------
+app.get('/api/reviews/summary', async (_req, res) => {
   try {
-    if (data.email) {
-      const subject = "Mise à jour de votre commande — Maison Cire";
-      const text = `Votre commande ${data.id} est maintenant : ${status}.`;
-      const html = `<p>Votre commande <strong>${data.id}</strong> est maintenant : <strong>${status}</strong>.</p>`;
-      await sendOrderEmail({ to: data.email, subject, text, html });
-    }
-  } catch (_) {}
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('product_id,rating');
+    if (error) throw error;
 
-  res.json({ ok: true, order: data });
+    const summary = {};
+    for (const r of (data || [])) {
+      const pid = r.product_id;
+      const rating = Number(r.rating) || 0;
+      if (!summary[pid]) summary[pid] = { sum: 0, count: 0 };
+      summary[pid].sum += rating;
+      summary[pid].count += 1;
+    }
+    const out = {};
+    for (const [pid, v] of Object.entries(summary)) {
+      out[pid] = {
+        avg: v.count ? v.sum / v.count : 0,
+        count: v.count,
+      };
+    }
+
+    return ok(res, { summary: out });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur summary avis');
+  }
 });
 
-// =======================================================
-// START
-// =======================================================
+app.get('/api/reviews/:productId', async (req, res) => {
+  try {
+    const productId = String(req.params.productId || '').trim();
+    if (!productId) return bad(res, 400, 'productId manquant');
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('id,product_id,name,rating,text,created_at')
+      .eq('product_id', productId)
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return ok(res, { reviews: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur avis');
+  }
+});
+
+app.post('/api/reviews/:productId', async (req, res) => {
+  try {
+    const product_id = String(req.params.productId || '').trim();
+    const name = String(req.body?.name || '').trim();
+    const rating = Number(req.body?.rating || 0);
+    const text = String(req.body?.text || '').trim();
+
+    if (!product_id) return bad(res, 400, 'productId manquant');
+    if (!name) return bad(res, 400, 'Nom requis');
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5) return bad(res, 400, 'Note invalide');
+
+    const { data, error } = await supabase
+      .from('reviews')
+      .insert({ product_id, name, rating, text })
+      .select('id,product_id,name,rating,text,created_at')
+      .single();
+    if (error) throw error;
+    return ok(res, { review: data });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur ajout avis');
+  }
+});
+
+// ---------- Notify ----------
+app.post('/api/notify/:productId', async (req, res) => {
+  try {
+    const product_id = String(req.params.productId || '').trim();
+    const email = normalizeEmail(req.body?.email);
+    if (!product_id) return bad(res, 400, 'productId manquant');
+    if (!email || !email.includes('@')) return bad(res, 400, 'Email invalide');
+
+    const { error } = await supabase
+      .from('notify_subscriptions')
+      .insert({ product_id, email });
+    if (error && !String(error.message || '').includes('duplicate')) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur subscribe');
+  }
+});
+
+app.delete('/api/notify/:productId', async (req, res) => {
+  try {
+    const product_id = String(req.params.productId || '').trim();
+    const email = normalizeEmail(req.body?.email);
+    if (!product_id) return bad(res, 400, 'productId manquant');
+    if (!email || !email.includes('@')) return bad(res, 400, 'Email invalide');
+
+    const { error } = await supabase
+      .from('notify_subscriptions')
+      .delete()
+      .eq('product_id', product_id)
+      .eq('email', email);
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur unsubscribe');
+  }
+});
+
+// ---------- Admin: products ----------
+app.post('/api/admin/products', requireAdmin, async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const id = String(payload.id || '').trim();
+    const name = String(payload.name || '').trim();
+    const price = Number(payload.price || 0);
+    const stock = Number(payload.stock || 0);
+    const image = String(payload.image || '').trim();
+    const description = String(payload.description || '').trim();
+
+    if (!id || !name) return bad(res, 400, 'ID et nom requis');
+    if (!Number.isFinite(price) || price < 0) return bad(res, 400, 'Prix invalide');
+    if (!Number.isFinite(stock) || stock < 0) return bad(res, 400, 'Stock invalide');
+
+    const { data, error } = await supabase
+      .from('products')
+      .insert({ id, name, price, stock, image, description })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return ok(res, { product: data });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur création produit');
+  }
+});
+
+app.patch('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 400, 'ID manquant');
+
+    const payload = req.body || {};
+    const update = {
+      ...(payload.name !== undefined ? { name: String(payload.name || '').trim() } : {}),
+      ...(payload.price !== undefined ? { price: Number(payload.price || 0) } : {}),
+      ...(payload.stock !== undefined ? { stock: Math.floor(Number(payload.stock || 0)) } : {}),
+      ...(payload.image !== undefined ? { image: String(payload.image || '').trim() } : {}),
+      ...(payload.description !== undefined ? { description: String(payload.description || '').trim() } : {}),
+    };
+
+    const { data, error } = await supabase
+      .from('products')
+      .update(update)
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return ok(res, { product: data });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur update produit');
+  }
+});
+
+app.delete('/api/admin/products/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 400, 'ID manquant');
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur suppression produit');
+  }
+});
+
+// ---------- Admin: reviews ----------
+app.delete('/api/admin/reviews/:reviewId', requireAdmin, async (req, res) => {
+  try {
+    const reviewId = String(req.params.reviewId || '').trim();
+    if (!reviewId) return bad(res, 400, 'reviewId manquant');
+    const { error } = await supabase.from('reviews').delete().eq('id', reviewId);
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur suppression avis');
+  }
+});
+
+app.delete('/api/admin/reviews/product/:productId', requireAdmin, async (req, res) => {
+  try {
+    const productId = String(req.params.productId || '').trim();
+    if (!productId) return bad(res, 400, 'productId manquant');
+    const { error } = await supabase.from('reviews').delete().eq('product_id', productId);
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur suppression avis produit');
+  }
+});
+
+// ---------- Admin: orders ----------
+app.get('/api/admin/orders', requireAdmin, async (req, res) => {
+  try {
+    const include_done = String(req.query.include_done || '0') === '1';
+    let q = supabase
+      .from('orders')
+      .select('id, total, status, created_at, cart')
+      .order('created_at', { ascending: false });
+    if (!include_done) q = q.neq('status', 'termine');
+    const { data, error } = await q;
+    if (error) throw error;
+
+    const orders = (data || []).map((o) => ({
+      id: o.id,
+      total: Number(o.total || 0),
+      status: o.status,
+      created_at: o.created_at,
+      items_count: countItemsInCart(o.cart),
+    }));
+    return ok(res, { orders });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur chargement commandes');
+  }
+});
+
+app.get('/api/admin/orders/:id', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) return bad(res, 400, 'id manquant');
+
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return bad(res, 404, 'Commande introuvable');
+    return ok(res, { order: data });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur commande');
+  }
+});
+
+app.patch('/api/admin/orders/:id/status', requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    const status = String(req.body?.status || '').trim();
+    if (!id) return bad(res, 400, 'id manquant');
+    if (!['preparation', 'transit', 'termine'].includes(status)) {
+      return bad(res, 400, 'Statut invalide');
+    }
+
+    const { data: order, error } = await supabase
+      .from('orders')
+      .update({ status })
+      .eq('id', id)
+      .select('*')
+      .single();
+    if (error) throw error;
+
+    // email client (best-effort)
+    try {
+      if (order?.email) {
+        await sendMail({
+          to: order.email,
+          subject: `Mise à jour de votre commande #${order.id}`,
+          text: `Statut : ${status}`,
+        });
+      }
+    } catch (_) {}
+
+    return ok(res, { ok: true, order });
+  } catch (e) {
+    return bad(res, 500, e?.message || 'Erreur update statut');
+  }
+});
+
+// ---------- Health ----------
+app.get('/health', (_req, res) => ok(res, { ok: true }));
+
 app.listen(PORT, () => {
-  console.log(`✅ API listening on port ${PORT}`);
+  console.log(`✅ API running on :${PORT}`);
 });

@@ -2923,12 +2923,3 @@ a,
   padding: 14px;
   background: #fff;
 }
-
-.btn--danger{
-  background-color: rgb(209, 68, 68);
-  color:white
-}
-
-.btn--danger:hover{
-  background-color: darkred;
-}
