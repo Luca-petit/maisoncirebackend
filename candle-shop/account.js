@@ -4,6 +4,10 @@
 // - Si connecté : email + logout + Mes commandes
 // - Si role=admin : affiche le dashboard admin (réutilise app.js)
 
+if (window.__MC_ACCOUNT_INIT__) return;
+window.__MC_ACCOUNT_INIT__ = true;
+
+
 (function () {
   const API_BASE = (window.__API_BASE__ || "https://backendmaisoncire.onrender.com").replace(/\/$/, "");
   const TOKEN_KEY = "mc_auth_token_v1";
