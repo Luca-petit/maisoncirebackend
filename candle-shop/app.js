@@ -25,6 +25,8 @@ const NEWS_KEY = "candle_shop_newsletter_v1";
 const REVIEWS_KEY = "candle_shop_reviews_v1";
 const NOTIFY_KEY = "candle_shop_notify_v1";
 
+const ENABLE_GIFTCARDS = false;
+
 
 /* ========== 
   Backend API (Supabase via Express)
@@ -141,6 +143,16 @@ function renderOrderDetail(order) {
     return `<li><strong>Carte cadeau</strong> — ${Number(gc.amount || 0)}€ → ${escapeHTML(gc.receiver || "")}</li>`;
   }).join("");
 
+  const addr = (order && typeof order.address === "object" && order.address) ? order.address : null;
+
+const addrLine = (addr && (addr.street || addr.city || addr.postal_code || addr.number))
+  ? `${addr.number ? addr.number + " " : ""}${addr.street || ""}, ${addr.postal_code || ""} ${addr.city || ""}`.trim()
+  : "—";
+
+const deliveryLabel = order.delivery_mode === "shipping" ? "Envoi à domicile" : "Retrait en magasin";
+const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
+
+
   els.adminOrderDetail.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
       <h4>Détail commande</h4>
@@ -153,8 +165,15 @@ function renderOrderDetail(order) {
 
     <div style="margin-top:10px;">
       <p><strong>Email:</strong> ${escapeHTML(order.email || "")}</p>
-      <p><strong>Livraison:</strong> ${escapeHTML(order.delivery_mode || "")}</p>
-      <p><strong>Paiement:</strong> ${escapeHTML(order.payment_mode || "")}</p>
+      <p><strong>Téléphone:</strong> ${escapeHTML(order.phone || "—")}</p>
+      <p><strong>Livraison:</strong> ${escapeHTML(deliveryLabel)}</p>
+
+      ${
+        order.delivery_mode === "shipping"
+          ? `<p><strong>Adresse:</strong> ${escapeHTML(addrLine)}</p>`
+          : ""
+      }
+      <p><strong>Paiement:</strong> ${escapeHTML(paymentLabel)}</p>
       <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
     </div>
 
@@ -1517,6 +1536,10 @@ function renderGiftCardPreview() {
 }
 
 function addGiftCardToCart() {
+  if (!ENABLE_GIFTCARDS){
+    console.warn("Gift cards desactivées");
+    return;
+  }
   updateCustomAmountUI();
   const amount = getGiftCardAmount();
 
@@ -2272,7 +2295,8 @@ if (els.addPackBtn) {
 }
 
 /* Gift Card bindings */
-["input", "change"].forEach(evt => {
+if (ENABLE_GIFTCARDS) {
+  ["input", "change"].forEach(evt => {
   els.gcColor?.addEventListener(evt, renderGiftCardPreview);
   els.gcReceiverEmail?.addEventListener(evt, renderGiftCardPreview);
   els.gcSendDate?.addEventListener(evt, renderGiftCardPreview);
@@ -2281,8 +2305,10 @@ if (els.addPackBtn) {
 });
 
 els.gcAmount?.addEventListener("change", () => {
+  if (ENABLE_GIFTCARDS){
   updateCustomAmountUI();
   renderGiftCardPreview();
+  }
   if ((els.gcAmount?.value || "") === "custom") els.gcCustomAmount?.focus();
 });
 
@@ -2290,6 +2316,7 @@ els.gcCustomAmount?.addEventListener("input", renderGiftCardPreview);
 
 if (els.gcAddToCart) els.gcAddToCart.addEventListener("click", addGiftCardToCart);
 if (els.gcReset) els.gcReset.addEventListener("click", resetGiftCardForm);
+}
 
 /* Reviews form submit */
 if (els.reviewForm) {
