@@ -49,6 +49,15 @@ const els = {
   msg: document.getElementById("coMsg"),
 };
 
+// ✅ Si connecté, pré-remplir l'email (et le verrouiller)
+try {
+  const u = JSON.parse(localStorage.getItem("mc_auth_user_v1") || "null");
+  if (u?.email && els.email) {
+    els.email.value = String(u.email);
+    els.email.readOnly = true;
+  }
+} catch (_) {}
+
 function setMsg(t){ if (els.msg) els.msg.textContent = t || ""; }
 
 function renderRules() {
@@ -164,3 +173,4 @@ els.form.addEventListener("submit", async (e) => {
 
 renderRules();
 renderRecap();
+
