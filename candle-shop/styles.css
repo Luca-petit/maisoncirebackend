@@ -3010,3 +3010,19 @@ a,
   height:1px;
   background: rgba(0,0,0,.08);
 }
+
+#adminSave{
+  background-color: #22c55e;
+}
+
+#logoutBtn{
+  background-color: rgb(238, 152, 152);
+}
+
+#adminDelete{
+  background-color: rgb(212, 56, 56);
+}
+
+#adminReviewsClear{
+   background-color: rgb(212, 56, 56);
+}
