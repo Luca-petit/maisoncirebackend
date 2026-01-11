@@ -5,24 +5,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="format-detection" content="telephone=no,date=no,address=no,email=no" />
   <title>Maison Cire — Bougies</title>
-  <meta name="description" content="Maison Cire — bougies parfumées. Packs personnalisables, panier, admin stock (démo)." />
+  <meta name="description" content="Maison Cire — bougies parfumées. Packs personnalisables, panier." />
   <link rel="stylesheet" href="styles.css" />
+
   <script>
-  window.__API_BASE__ = "https://backendmaisoncire.onrender.com";
-</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="auth.js" defer></script>
-<script src="app.js" defer></script>
+    window.__API_BASE__ = "https://backendmaisoncire.onrender.com";
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- ✅ Auth nav: Connexion / Mon compte -->
+  <script src="auth.js" defer></script>
+
+  <!-- App (shop/cart/packs/reviews/etc) -->
+  <script src="app.js" defer></script>
 </head>
 
 <body>
-  <!-- Header -->
   <header class="header">
     <div class="brand">
       <span class="brandDot"></span>
       <span class="brandText">Maison Cire</span>
     </div>
-
 
     <nav class="nav" id="nav" aria-label="Navigation">
       <a href="#boutique">Boutique</a>
@@ -33,59 +37,52 @@
     </nav>
 
     <div class="headerActions">
-  <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
-    <span class="hamburger__bars" aria-hidden="true"></span>
-  </button>
+      <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+        <span class="hamburger__bars" aria-hidden="true"></span>
+      </button>
 
-  <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
-    <span aria-hidden="true">🛒</span>
-    <span class="cartBtn__count" id="cartCount">0</span>
-  </button>
-</div>
-
-
+      <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
+        <span aria-hidden="true">🛒</span>
+        <span class="cartBtn__count" id="cartCount">0</span>
+      </button>
+    </div>
   </header>
 
-  <!-- Hero -->
   <main>
-   <section class="hero0" id="top">
-  <div class="hero0__bg" aria-hidden="true"></div>
+    <!-- Hero -->
+    <section class="hero0" id="top">
+      <div class="hero0__bg" aria-hidden="true"></div>
+      <div class="hero0__inner">
+        <div class="hero0__content reveal">
+          <span class="hero0__tag">Bougies artisanales · Cire végétale · Parfumées</span>
 
-  <div class="hero0__inner">
-    <div class="hero0__content reveal">
-      <span class="hero0__tag">Bougies artisanales · Cire végétale · Parfumées</span>
+          <h1 class="hero0__title">
+            L’ambiance qui <span class="hero0__grad">réchauffe</span> votre intérieur.
+          </h1>
 
-      <h1 class="hero0__title">
-        L’ambiance qui
-        <span class="hero0__grad">réchauffe</span>
-        votre intérieur.
-      </h1>
+          <p class="hero0__lead">
+            Des bougies premium pensées pour transformer une pièce en refuge.
+            Achetez à l’unité ou composez votre pack (3 ou 5) avec remise automatique.
+          </p>
 
-      <p class="hero0__lead">
-        Des bougies premium pensées pour transformer une pièce en refuge.
-        Achetez à l’unité ou composez votre pack (3 ou 5) avec remise automatique.
-      </p>
-
-      <div class="hero0__actions">
-        <a class="btn btn--primary" href="#boutique">Commandez maintenant</a>
-        <a class="btn btn--ghost" href="#packs">Construire un pack</a>
+          <div class="hero0__actions">
+            <a class="btn btn--primary" href="#boutique">Commandez maintenant</a>
+            <a class="btn btn--ghost" href="#packs">Construire un pack</a>
+          </div>
+        </div>
       </div>
-    </div>
-
-  </div>
-</section>
+    </section>
 
     <!-- Boutique -->
     <section class="section reveal" id="boutique">
       <div class="section__head">
         <h2>Boutique</h2>
-        <p class="muted">5 bougies · stock en temps réel (démo)</p>
+        <p class="muted">Stock en temps réel (démo)</p>
       </div>
-
       <div class="grid" id="productGrid" aria-live="polite"></div>
     </section>
 
-    <!-- Packs (Wizard) -->
+    <!-- Packs -->
     <section class="section reveal" id="packs">
       <div class="section__head">
         <h2>Construire un pack</h2>
@@ -93,7 +90,6 @@
       </div>
 
       <div class="packWizard">
-        <!-- STEP 1 -->
         <div class="packStep" id="packStep1">
           <h3 class="packStep__title">1) Choisir un pack</h3>
 
@@ -119,13 +115,10 @@
 
           <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
             <div class="muted" id="packChosenText">Aucun pack sélectionné.</div>
-            <button class="btn btn--primary" id="packGoStep2" type="button" disabled>
-              Continuer
-            </button>
+            <button class="btn btn--primary" id="packGoStep2" type="button" disabled>Continuer</button>
           </div>
         </div>
 
-        <!-- STEP 2 -->
         <div class="packStep hidden" id="packStep2">
           <div class="packStep__head">
             <div>
@@ -159,7 +152,7 @@
                     <strong id="packValue">0,00 €</strong>
                   </div>
                   <div class="sumRow">
-                    <span>Offert (moins cher)</span>
+                    <span>Offert</span>
                     <strong id="packFree">- 0,00 €</strong>
                   </div>
                   <div class="sumRow sumRow--total">
@@ -169,11 +162,10 @@
 
                   <p class="tiny muted" id="packHint"></p>
 
-                  <p class="tiny muted" id="packPromoNote"></p>
-
                   <button class="btn btn--primary w100" id="addPackBtn" type="button" disabled>
                     Ajouter le pack au panier
                   </button>
+
                   <p class="formMsg" id="packMsg" role="status" aria-live="polite"></p>
                 </div>
               </div>
@@ -287,8 +279,6 @@
     </div>
   </div>
 </section>
-
-    <!-- Admin dashboard moved to account.html -->
   </main>
 
   <!-- Cart Drawer -->

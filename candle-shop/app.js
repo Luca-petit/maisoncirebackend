@@ -90,22 +90,17 @@ const DEFAULT_PRODUCTS = [
   { id: "santal", name: "Bougie Santal", price: 22.9, stock: 5, description: "Boisé premium, très apaisant.", image: "assets/santal.jpg" },
 ];
 
-const ADMIN_CODE_DEMO = "admin123";
 
 /* ==========
   Helpers
 ========== */
 
 function getAdminKey() {
+  // ✅ Maintenant, l’admin key = JWT token stocké quand le user a role=admin
   const k = localStorage.getItem("candle_shop_admin_key");
-  if (k && k.trim()) return k.trim();
-  const v = (els.adminCode?.value || "").trim();
-  if (v) {
-    localStorage.setItem("candle_shop_admin_key", v);
-    return v;
-  }
-  return "";
+  return (k && k.trim()) ? k.trim() : "";
 }
+
 
 function formatDateTimeFR(ts) {
   if (!ts) return "";
@@ -2158,28 +2153,6 @@ if (els.newsletterForm) {
   });
 }
 
-// Admin auth
-if (els.adminLogin) {
-  els.adminLogin.addEventListener("click", async () => {
-    const code = (els.adminCode?.value || "").trim();
-    if (code !== ADMIN_CODE_DEMO) return;
-
-    localStorage.setItem("candle_shop_admin_key", code);
-    
-    els.adminAuth?.classList.add("hidden");
-    els.adminPanel?.classList.remove("hidden");
-
-
-    await loadAdminOrders();
-
-    // si elle est terminée, on ferme le détail
-    renderOrderDetail(null);
-
-
-
-    if (els.adminSelect?.value) renderAdminReviews(els.adminSelect.value);
-  });
-}
 
 
 if (els.adminSelect) {
@@ -2749,3 +2722,6 @@ document.addEventListener("change", async (e) => {
 });
 
 
+// ✅ Expose for account.html (admin dashboard lives there now)
+window.loadAdminOrders = loadAdminOrders;
+window.renderOrderDetail = renderOrderDetail;
