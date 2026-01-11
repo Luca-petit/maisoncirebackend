@@ -219,6 +219,7 @@ const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
   els.adminOrderDetail.classList.remove("hidden");
 }
 
+
 async function loadAdminOrders() {
   if (!els.adminOrdersList) return;
 
@@ -1806,30 +1807,36 @@ document.addEventListener("click", async (e) => {
 
  const openOrderId = e.target?.closest?.("[data-admin-order-open]")?.dataset?.adminOrderOpen;
 if (openOrderId) {
-  // 1) mémorise l'orderId pour le dropdown
+
+  // ✅ SI on reclique sur la même commande → fermer
+  if (window.__ADMIN_CURRENT_ORDER_ID__ === openOrderId) {
+    const detail = document.getElementById("adminOrderDetail");
+    if (detail) {
+      detail.classList.add("hidden");
+      detail.innerHTML = "";
+    }
+    window.__ADMIN_CURRENT_ORDER_ID__ = null;
+    return;
+  }
+
+  // ✅ Sinon → ouvrir normalement
   window.__ADMIN_CURRENT_ORDER_ID__ = openOrderId;
 
   try {
-  const data = await apiAdminLoadOrder(openOrderId);
-  const order = data.order;
-  renderOrderDetail(order);
+    const data = await apiAdminLoadOrder(openOrderId);
+    const order = data.order;
 
-  window.__ADMIN_CURRENT_ORDER_ID__ = openOrderId;
+    renderOrderDetail(order);
 
-  const sel = document.getElementById("adminOrderStatus");
-  if (sel) sel.value = order.status || "preparation";
-} catch (err) {
-  console.error("ADMIN ORDER OPEN ERROR:", err);
-  if (els.adminOrdersMsg) els.adminOrdersMsg.textContent = "❌ " + (err?.message || "Erreur chargement commande");
-}
-
-
-  // 4) set la valeur du select (après render, sinon l’élément n’existe pas)
-  const sel = document.getElementById("adminOrderStatus");
-  if (sel) sel.value = order.status || "preparation";
+    const sel = document.getElementById("adminOrderStatus");
+    if (sel) sel.value = order.status || "preparation";
+  } catch (err) {
+    console.error("ADMIN ORDER OPEN ERROR:", err);
+  }
 
   return;
 }
+
 
 if (e.target?.closest?.("[data-admin-order-close]")) {
   renderOrderDetail(null);
