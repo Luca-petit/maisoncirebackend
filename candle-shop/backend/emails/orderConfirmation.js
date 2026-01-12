@@ -4,7 +4,8 @@ export function orderConfirmationEmail({
   deliveryLabel,
   paymentLabel,
   itemsHtml,
-  ibanHtml, // ✅ nouveau
+  ibanHtml,
+  statusLabel, // ✅ nouveau
 }) {
   const year = new Date().getFullYear();
 
@@ -29,7 +30,7 @@ export function orderConfirmationEmail({
 
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
           <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
-          <p style="margin:0;"><strong>Total :</strong> ${total} €</p>
+          <p style="margin:0;"><strong>Statut :</strong> ${statusLabel} €</p>
         </div>
 
         ${ibanHtml ? `
