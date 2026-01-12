@@ -183,6 +183,7 @@ const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
       <label class="tiny muted" for="adminOrderStatus"><strong>Statut :</strong></label>
 
       <select id="adminOrderStatus" class="input" style="max-width:260px;">
+      <option value="en attente du virement">En attente du virement</option>
         <option value="preparation">En préparation</option>
         <option value="transit">En transit</option>
         <option value="termine">Terminé</option>
@@ -486,18 +487,20 @@ function loadCart() {
   }
 }
 
-async function saveCart(cart) {
+function saveCart(cart) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 
   const sid = getSessionId();
   if (sid) {
-    // ✅ on attend que le serveur soit à jour avant de continuer
-    await apiFetch(`/api/cart/${encodeURIComponent(sid)}`, {
+    return apiFetch(`/api/cart/${sid}`, {
       method: "PUT",
       body: JSON.stringify({ cart })
-    });
+    }).catch(() => {});
   }
+
+  return Promise.resolve();
 }
+
 
 /* ==========
   Offers logic (SINGLES)

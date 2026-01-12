@@ -489,7 +489,11 @@ app.post("/api/checkout/:sessionId", async (req, res) => {
     total = Math.round(total * 100) / 100;
 
     // 4) Créer la commande
-    const status = "preparation";
+    const status =
+  payment_mode === "transfer"
+    ? "en attente du virement"
+    : "preparation";
+
     const delivery_fee = 0;
 
     const { data: created, error: orderErr } = await supabase
@@ -570,7 +574,12 @@ app.post("/api/orders", async (req, res) => {
     const address =
       req.body?.address && typeof req.body.address === "object" ? req.body.address : null;
     const delivery_fee = Number(req.body?.delivery_fee || 0) || 0;
-    const status = String(req.body?.status || "preparation");
+
+    const status =
+      payment_mode === "transfer"
+        ? "en attente du virement"
+        : "preparation";
+
 
     const total = Number(req.body?.total || 0) || 0;
     if (!email || !email.includes("@")) return bad(res, 400, "Email invalide");
@@ -991,7 +1000,7 @@ app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
     const status = String(req.body?.status || "").trim();
 
     if (!id) return bad(res, 400, "id manquant");
-    if (!["preparation", "transit", "termine"].includes(status)) {
+    if (!["en attente du virement", "preparation", "transit", "termine"].includes(status)) {
       return bad(res, 400, "Statut invalide");
     }
 
@@ -1008,9 +1017,11 @@ app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
 try {
   if (order?.email) {
     const statusLabel =
-      status === "preparation" ? "En préparation" :
-      status === "transit" ? "En transit" :
-      "Terminée";
+  status === "en attente du virement" ? "En attente du virement" :
+  status === "preparation" ? "En préparation" :
+  status === "transit" ? "En transit" :
+  "Terminée";
+
 
     await sendMail({
       to: order.email,
