@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Commande confirmée — Maison Cire</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <main class="container" style="max-width:700px;margin:60px auto;padding:0 16px;">
+    <h1>Merci pour votre commande ✨</h1>
+
+    <p id="confirmMsg" style="margin-top:16px;">
+      Votre commande a bien été enregistrée.
+    </p>
+
+    <div class="card" style="margin-top:20px;">
+      <p style="margin:15px 0 0 15px"><strong>Numéro de commande :</strong> <span id="orderId">—</span></p>
+      <p style="margin:15px 0 0 15px"></pstyle><strong>Mode de paiement :</strong> <span id="paymentMode">—</span></p>
+      <p style="margin:15px 0 15px 15px"><strong>Livraison :</strong> <span id="deliveryMode">—</span></p>
+    </div>
+
+    <a href="index.html" class="btn btn--primary" style="margin-top:24px;">
+      Retour à la boutique
+    </a>
+    <a href="account.html" class="btn btn--primary" style="margin-top:24px;">
+      Voir mes commandes
+    </a>
+  </main>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    document.getElementById("orderId").textContent = params.get("order") || "—";
+    document.getElementById("paymentMode").textContent = params.get("payment") || "—";
+    document.getElementById("deliveryMode").textContent = params.get("delivery") || "—";
+  </script>
+
+</body>
+</html>

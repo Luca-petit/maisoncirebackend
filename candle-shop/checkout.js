@@ -294,7 +294,20 @@
         });
 
         saveEmptyCart();
-        setMsg(els, `✅ Commande créée (#${data?.order_id || "OK"}). Un email de confirmation va arriver.`);
+
+        // redirection vers page confirmation
+        window.location.href =
+          `confirmation.html?order=${encodeURIComponent(data.order_id)}`
+          + `&payment=${encodeURIComponent(payment_mode)}`
+          + `&delivery=${encodeURIComponent(delivery_mode)}`;
+
+                  // vider panier local
+        localStorage.setItem(CART_KEY, JSON.stringify({ skus:{}, packs:[], giftcards:[] }));
+
+        // ✅ reset session (important)
+        localStorage.removeItem(SESSION_KEY);
+
+
         // option: redirect
         // setTimeout(() => (window.location.href = "account.html"), 700);
       } catch (err) {
