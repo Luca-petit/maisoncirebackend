@@ -685,6 +685,7 @@ try {
       deliveryLabel,
       paymentLabel,
       itemsHtml,
+      ibanHtml,
     }),
   });
 } catch (e) {
