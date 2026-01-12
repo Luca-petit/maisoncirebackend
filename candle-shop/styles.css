@@ -3026,3 +3026,7 @@ a,
 #adminReviewsClear{
    background-color: rgb(212, 56, 56);
 }
+
+#adminToggleFinished{
+  margin-top: 10px;
+}

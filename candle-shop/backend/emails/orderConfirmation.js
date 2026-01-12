@@ -15,28 +15,11 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
           Merci pour votre commande. Nous vous tiendrons informé(e) à chaque étape.
         </p>
 
-        <div style="background:#f3f4f8;border-radius:12px;padding:14px 14px;margin:14px 0;">
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div>
-              <div style="font-size:12px;color:#666;">Numéro</div>
-              <div style="font-weight:700;">#${orderId}</div>
-            </div>
-          </div>
-
-          <div style="margin-top:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div>
-                <div>
-                <div style="font-size:12px;color:#666;"></div>
-                <div style="font-weight:700;">${itemsHtml || ""}</div>
-                </div>
-              <div style="font-size:12px;color:#666;">Livraison</div>
-              <div>${deliveryLabel || "-"}</div>
-            </div>
-            <div>
-              <div style="font-size:12px;color:#666; margin-left:15px">Paiement</div>
-              <div>${paymentLabel || "-"}</div>
-            </div>
-          </div>
+        <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
+            <p style="margin:0 0 8px;"><strong>Numéro de commande :</strong> ${orderId}</p>
+          <p style="margin:0 0 8px;">${itemsHtml || ""}</p>
+          <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
+          <p style="margin:0;"><strong>Paiement :</strong> ${paymentLabel}</p>
         </div>
 
         <p style="margin:16px 0 0;color:#666;font-size:13px;line-height:1.5;">

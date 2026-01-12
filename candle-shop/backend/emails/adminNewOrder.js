@@ -10,7 +10,6 @@ export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, payme
         <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
           <p style="margin:0 0 8px;"><strong>Client :</strong> ${email}</p>
           <p style="margin:0 0 8px;">${itemsHtml || ""}</p>
-          <p style="margin:0 0 8px;"><strong>Total :</strong> ${total} €</p>
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
           <p style="margin:0;"><strong>Paiement :</strong> ${paymentLabel}</p>
         </div>
