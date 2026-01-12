@@ -10,6 +10,12 @@ import jwt from "jsonwebtoken";
 import { supabase } from "./supabase.js";
 import { sendMail } from "./mailer.js";
 
+import { orderConfirmationEmail } from "./emails/orderConfirmation.js";
+import { adminNewOrderEmail } from "./emails/adminNewOrder.js";
+import { orderStatusEmail } from "./emails/orderStatus.js";
+
+
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -304,8 +310,46 @@ app.post("/api/orders", async (req, res) => {
       .single();
     if (error) throw error;
 
-    // best-effort mail
-    // await sendMail({ to: email, subject: "Commande reçue", text: `Merci ! Votre commande #${data.id} est enregistrée.` });
+    // labels lisibles
+const deliveryLabel = delivery_mode === "shipping" ? "Envoi à domicile" : "Retrait en magasin";
+const paymentLabel = payment_mode === "cash" ? "Cash" : "Virement";
+
+// email client (best-effort)
+try {
+  await sendMail({
+    to: email,
+    subject: `Maison Cire — Confirmation de commande #${data.id}`,
+    html: orderConfirmationEmail({
+      orderId: data.id,
+      total: Number(total || 0).toFixed(2),
+      deliveryLabel,
+      paymentLabel,
+    }),
+  });
+} catch (e) {
+  console.error("MAIL client error:", e?.message || e);
+}
+
+// email admin (best-effort)
+try {
+  const adminTo = process.env.ADMIN_EMAIL;
+  if (adminTo) {
+    await sendMail({
+      to: adminTo,
+      subject: `Nouvelle commande #${data.id}`,
+      html: adminNewOrderEmail({
+        orderId: data.id,
+        email,
+        total: Number(total || 0).toFixed(2),
+        deliveryLabel,
+        paymentLabel,
+      }),
+    });
+  }
+} catch (e) {
+  console.error("MAIL admin error:", e?.message || e);
+}
+
 
     return ok(res, { ok: true, order_id: data?.id });
   } catch (e) {
@@ -581,15 +625,28 @@ app.patch("/api/admin/orders/:id/status", requireAdmin, async (req, res) => {
     if (error) throw error;
 
     // email client (best-effort)
-    try {
-      if (order?.email) {
-        await sendMail({
-          to: order.email,
-          subject: `Mise à jour de votre commande #${order.id}`,
-          text: `Statut : ${status}`,
-        });
-      }
-    } catch (_) {}
+    // email client (best-effort)
+try {
+  if (order?.email) {
+    const statusLabel =
+      status === "preparation" ? "En préparation" :
+      status === "transit" ? "En transit" :
+      "Terminée";
+
+    await sendMail({
+      to: order.email,
+      subject: `Maison Cire — Commande #${order.id} : ${statusLabel}`,
+      html: orderStatusEmail({
+        orderId: order.id,
+        statusLabel,
+      }),
+      text: `Commande #${order.id} — Statut : ${statusLabel}`, // fallback simple
+    });
+  }
+} catch (e) {
+  console.error("MAIL status error:", e?.message || e);
+}
+
 
     return ok(res, { ok: true, order });
   } catch (e) {
