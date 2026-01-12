@@ -486,11 +486,16 @@ function loadCart() {
   }
 }
 
-function saveCart(cart) {
+async function saveCart(cart) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
+
   const sid = getSessionId();
   if (sid) {
-    apiFetch(`/api/cart/${sid}`, { method: "PUT", body: JSON.stringify({ cart }) }).catch(() => {});
+    // ✅ on attend que le serveur soit à jour avant de continuer
+    await apiFetch(`/api/cart/${encodeURIComponent(sid)}`, {
+      method: "PUT",
+      body: JSON.stringify({ cart })
+    });
   }
 }
 
@@ -1445,7 +1450,7 @@ async function addPackToCart() {
   });
 
   // ✅ IMPORTANT: on NE décrémente PAS p.stock ici (sinon double réserve)
-  saveCart(cart);
+  await saveCart(cart);
 
   // sync from backend (best-effort)
   try {

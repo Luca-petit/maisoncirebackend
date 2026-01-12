@@ -36,6 +36,138 @@ function bad(res, status, message) {
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatEUR(n) {
+  const x = Number(n || 0);
+  return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(x);
+}
+
+// Construit un tableau HTML avec les articles (singles + packs)
+async function buildOrderItemsHtml(cart) {
+  const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
+    ? cart.skus
+    : {};
+  const packs = Array.isArray(cart?.packs) ? cart.packs : [];
+
+  const ids = new Set();
+
+  // singles
+  for (const pid of Object.keys(skus)) ids.add(String(pid));
+
+  // packs
+  for (const pack of packs) {
+    for (const it of (Array.isArray(pack?.items) ? pack.items : [])) {
+      if (it?.id) ids.add(String(it.id));
+    }
+  }
+
+  // rien à afficher
+  if (ids.size === 0) {
+    return `<p style="margin:0;color:#666;">Aucun article.</p>`;
+  }
+
+  // charge les produits concernés
+  const { data: prods, error } = await supabase
+    .from("products")
+    .select("id,name,price")
+    .in("id", Array.from(ids));
+
+  if (error) throw error;
+
+  const byId = Object.fromEntries((prods || []).map(p => [String(p.id), p]));
+
+  let rows = "";
+
+  // singles rows
+  for (const [pidRaw, qtyRaw] of Object.entries(skus)) {
+    const pid = String(pidRaw);
+    const qty = Math.max(0, Math.floor(Number(qtyRaw) || 0));
+    if (!qty) continue;
+
+    const p = byId[pid];
+    const name = p?.name || pid;
+    const unit = Number(p?.price || 0);
+    const line = unit * qty;
+
+    rows += `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;">
+          ${escapeHtml(name)}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">
+          ${qty}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(unit))}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(line))}
+        </td>
+      </tr>
+    `;
+  }
+
+  // packs rows
+  for (const pack of packs) {
+    const packName = pack?.name || "Pack";
+    const packTotal = Number(pack?.total ?? pack?.value ?? 0);
+
+    const items = (Array.isArray(pack?.items) ? pack.items : [])
+      .map(it => {
+        const pid = String(it?.id || "");
+        const qty = Math.max(0, Math.floor(Number(it?.qty) || 0));
+        if (!pid || !qty) return null;
+        const p = byId[pid];
+        return `${escapeHtml(p?.name || pid)} ×${qty}`;
+      })
+      .filter(Boolean)
+      .join("<br>");
+
+    rows += `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;">
+          <strong>${escapeHtml(packName)}</strong>
+          ${items ? `<div style="margin-top:6px;color:#666;font-size:12px;line-height:1.35;">${items}</div>` : ""}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">
+          1
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(packTotal))}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(packTotal))}
+        </td>
+      </tr>
+    `;
+  }
+
+  return `
+    <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:10px;">
+      <thead>
+        <tr>
+          <th align="left" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;font-size:12px;">Article</th>
+          <th align="center" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;font-size:12px;">Qté</th>
+          <th align="right" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;font-size:12px;">PU</th>
+          <th align="right" style="padding:10px 8px;border-bottom:1px solid #eee;color:#666;font-size:12px;">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+      </tbody>
+    </table>
+  `;
+}
+
 function countItemsInCart(cart) {
   if (!cart || typeof cart !== "object") return 0;
   const skus = cart.skus && typeof cart.skus === "object" ? cart.skus : {};
@@ -461,6 +593,15 @@ app.post("/api/orders", async (req, res) => {
       .select("id")
       .single();
     if (error) throw error;
+
+    let itemsHtml = "";
+try {
+  itemsHtml = await buildOrderItemsHtml(cart);
+} catch (e) {
+  console.error("itemsHtml error:", e?.message || e);
+  itemsHtml = `<p style="margin:0;color:#666;">(Impossible de charger les articles)</p>`;
+}
+
 // --- Décrément stock en DB (singles + packs) ---
 try {
   const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
@@ -543,6 +684,7 @@ try {
       total: Number(total || 0).toFixed(2),
       deliveryLabel,
       paymentLabel,
+      itemsHtml,
     }),
   });
 } catch (e) {
@@ -562,6 +704,7 @@ try {
         total: Number(total || 0).toFixed(2),
         deliveryLabel,
         paymentLabel,
+        itemsHtml,
       }),
     });
   }

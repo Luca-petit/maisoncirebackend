@@ -1,4 +1,4 @@
-export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, paymentLabel }) {
+export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, paymentLabel,itemsHtml }) {
   return `<!doctype html>
 <html>
   <body style="margin:0;background:#f6f7fb;font-family:Arial,Helvetica,sans-serif;color:#111;">
@@ -9,6 +9,7 @@ export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, payme
 
         <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
           <p style="margin:0 0 8px;"><strong>Client :</strong> ${email}</p>
+          <p style="margin:0 0 8px;"><strong>Client :</strong> ${itemsHtml || ""}</p>
           <p style="margin:0 0 8px;"><strong>Total :</strong> ${total} €</p>
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
           <p style="margin:0;"><strong>Paiement :</strong> ${paymentLabel}</p>

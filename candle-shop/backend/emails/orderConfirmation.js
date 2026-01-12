@@ -1,4 +1,4 @@
-export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentLabel }) {
+export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentLabel, itemsHtml}) {
   const year = new Date().getFullYear();
 
   return `<!doctype html>
@@ -25,6 +25,10 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
             <div>
               <div style="font-size:12px;color:#666;">Total</div>
               <div style="font-weight:700;">${total} €</div>
+            </div>
+            <div>
+              <div style="font-size:12px;color:#666;">Artcile(s)</div>
+              <div style="font-weight:700;">${itemsHtml || ""}</div>
             </div>
           </div>
 
