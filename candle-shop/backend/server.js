@@ -48,6 +48,14 @@ function countItemsInCart(cart) {
   );
 }
 
+function computeFreeUnitsSingles(qty) {
+  const q = Math.max(0, Math.floor(Number(qty) || 0));
+  const group5 = Math.floor(q / 5);
+  const rem = q % 5;
+  const group3 = Math.floor(rem / 3);
+  return group5 * 2 + group3 * 1;
+}
+
 // ---------- Auth (JWT) ----------
 function signToken(user) {
   const payload = { sub: user.id, email: user.email, role: user.role };
@@ -274,6 +282,150 @@ app.put("/api/cart/:sessionId", async (req, res) => {
 });
 
 // ---------- Orders ----------
+
+app.post("/api/checkout/:sessionId", async (req, res) => {
+  try {
+    const sid = String(req.params.sessionId || "").trim();
+    if (!sid) return bad(res, 400, "sessionId manquant");
+
+    // 1) Charger le panier depuis la DB
+    const { data: cartRow, error: cartErr } = await supabase
+      .from("carts")
+      .select("cart")
+      .eq("session_id", sid)
+      .maybeSingle();
+
+    if (cartErr) throw cartErr;
+
+    const cart = cartRow?.cart;
+    if (!cart || typeof cart !== "object") return bad(res, 400, "Panier introuvable");
+
+    const skus = cart.skus && typeof cart.skus === "object" ? cart.skus : {};
+    const packs = Array.isArray(cart.packs) ? cart.packs : [];
+    const giftcards = Array.isArray(cart.giftcards) ? cart.giftcards : [];
+
+    const itemsCount =
+      Object.values(skus).reduce((a, b) => a + (Number(b) || 0), 0) +
+      packs.length +
+      giftcards.length;
+
+    if (itemsCount === 0) return bad(res, 400, "Panier vide");
+
+    // 2) Infos client depuis le body (ton checkout.js envoie ça)
+    const email = normalizeEmail(req.body?.email);
+    const phone = String(req.body?.phone || "").trim() || null;
+    const delivery_mode = String(req.body?.delivery_mode || "pickup").trim();
+    const payment_mode = String(req.body?.payment_mode || "transfer").trim();
+    const address =
+      req.body?.address && typeof req.body.address === "object" ? req.body.address : null;
+
+    if (!email || !email.includes("@")) return bad(res, 400, "Email invalide");
+
+    // 3) Calcul total (simple & cohérent avec ton app.js)
+    //    - singles: promo 3=1 offerte, 5=2 offertes (par produit)
+    //    - packs: on prend pack.total (déjà calculé côté front quand créé)
+    //    - giftcards: amount (même si tu les as désactivées, on garde propre)
+    const allProducts = await supabase.from("products").select("id,price");
+    if (allProducts.error) throw allProducts.error;
+
+    const priceMap = {};
+    for (const p of allProducts.data || []) priceMap[p.id] = Number(p.price || 0);
+
+    let total = 0;
+
+    // singles
+    for (const [pid, qtyRaw] of Object.entries(skus)) {
+      const qty = Math.max(0, Math.floor(Number(qtyRaw) || 0));
+      const price = Number(priceMap[pid] || 0);
+
+      const free = computeFreeUnitsSingles(qty);
+      const payable = Math.max(0, qty - free);
+
+      total += payable * price;
+    }
+
+    // packs
+    for (const pack of packs) {
+      total += Number(pack?.total || 0); // pack.total déjà calculé dans ton app.js
+    }
+
+    // giftcards
+    for (const gc of giftcards) {
+      total += Number(gc?.amount || 0);
+    }
+
+    total = Math.round(total * 100) / 100;
+
+    // 4) Créer la commande
+    const status = "preparation";
+    const delivery_fee = 0;
+
+    const { data: created, error: orderErr } = await supabase
+      .from("orders")
+      .insert({
+        session_id: sid,
+        email,
+        phone,
+        delivery_mode,
+        payment_mode,
+        address,
+        cart,
+        total,
+        delivery_fee,
+        status,
+      })
+      .select("id")
+      .single();
+
+    if (orderErr) throw orderErr;
+
+    // 5) Décrément stock (singles + packs)
+    const toDec = {}; // { productId: qtyToRemove }
+
+    // singles
+    for (const [pid, qtyRaw] of Object.entries(skus)) {
+      const q = Math.max(0, Math.floor(Number(qtyRaw) || 0));
+      if (q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+    }
+
+    // packs (items: [{id, qty}])
+    for (const pack of packs) {
+      const items = Array.isArray(pack?.items) ? pack.items : [];
+      for (const it of items) {
+        const pid = String(it?.id || "").trim();
+        const q = Math.max(0, Math.floor(Number(it?.qty) || 0));
+        if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+      }
+    }
+
+    // appliquer
+    for (const [pid, q] of Object.entries(toDec)) {
+      const { data: pRow, error: pErr } = await supabase
+        .from("products")
+        .select("stock")
+        .eq("id", pid)
+        .single();
+
+      if (pErr) throw pErr;
+
+      const current = Number(pRow?.stock || 0);
+      const next = Math.max(0, current - Number(q || 0));
+
+      const { error: uErr } = await supabase
+        .from("products")
+        .update({ stock: next })
+        .eq("id", pid);
+
+      if (uErr) throw uErr;
+    }
+
+    return ok(res, { ok: true, order_id: created.id, total });
+  } catch (e) {
+    console.error("CHECKOUT error:", e?.message || e);
+    return bad(res, 500, e?.message || "Erreur checkout");
+  }
+});
+
 app.post("/api/orders", async (req, res) => {
   try {
     const session_id = String(req.body?.session_id || "").trim();
@@ -309,6 +461,73 @@ app.post("/api/orders", async (req, res) => {
       .select("id")
       .single();
     if (error) throw error;
+// --- Décrément stock en DB (singles + packs) ---
+try {
+  const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
+    ? cart.skus
+    : {};
+
+  const packs = Array.isArray(cart?.packs) ? cart.packs : [];
+
+  // 1) build { id -> qtyToRemove }
+  const toDec = {};
+
+  // singles
+  for (const [pidRaw, qtyRaw] of Object.entries(skus)) {
+    const pid = String(pidRaw || "").trim();
+    const q = Math.floor(Number(qtyRaw) || 0);
+    if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+  }
+
+  // packs
+  for (const pack of packs) {
+    const items = Array.isArray(pack?.items) ? pack.items : [];
+    for (const it of items) {
+      const pid = String(it?.id || "").trim();
+      const q = Math.floor(Number(it?.qty) || 0);
+      if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+    }
+  }
+
+  const ids = Object.keys(toDec);
+  if (ids.length) {
+    // 2) fetch all stocks in one query
+    const { data: rows, error: readErr } = await supabase
+      .from("products")
+      .select("id,stock")
+      .in("id", ids);
+
+    if (readErr) throw readErr;
+
+    const foundIds = new Set((rows || []).map(r => String(r.id)));
+    const missing = ids.filter(id => !foundIds.has(id));
+    if (missing.length) {
+      console.error("STOCK decrement: produits introuvables:", missing);
+    }
+
+    // 3) update each found row
+    for (const r of (rows || [])) {
+      const pid = String(r.id);
+      const current = Number(r.stock || 0);
+      const q = Number(toDec[pid] || 0);
+      const next = Math.max(0, current - q);
+
+      const { error: upErr } = await supabase
+        .from("products")
+        .update({ stock: next })
+        .eq("id", pid);
+
+      if (upErr) throw upErr;
+    }
+
+    console.log("✅ STOCK decremented:", toDec);
+  } else {
+    console.log("ℹ️ STOCK decrement: rien à décrémenter (panier vide?)");
+  }
+} catch (e) {
+  console.error("❌ STOCK decrement error:", e?.message || e);
+}
+
 
     // labels lisibles
 const deliveryLabel = delivery_mode === "shipping" ? "Envoi à domicile" : "Retrait en magasin";
