@@ -8,7 +8,6 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
       <div style="background:#ffffff;border-radius:16px;padding:22px 22px 10px;box-shadow:0 10px 30px rgba(0,0,0,.06);">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:10px;height:10px;border-radius:999px;background:#111;"></div>
-          <div style="font-weight:700;letter-spacing:.2px;">Maison Cire</div>
         </div>
 
         <h1 style="margin:18px 0 8px;font-size:22px;">Commande confirmée 🕯️</h1>
@@ -22,23 +21,19 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
               <div style="font-size:12px;color:#666;">Numéro</div>
               <div style="font-weight:700;">#${orderId}</div>
             </div>
-            <div>
-              <div style="font-size:12px;color:#666;">Total</div>
-              <div style="font-weight:700;">${total} €</div>
-            </div>
-            <div>
-              <div style="font-size:12px;color:#666;">Artcile(s)</div>
-              <div style="font-weight:700;">${itemsHtml || ""}</div>
-            </div>
           </div>
 
           <div style="margin-top:12px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;">
             <div>
+                <div>
+                <div style="font-size:12px;color:#666;"></div>
+                <div style="font-weight:700;">${itemsHtml || ""}</div>
+                </div>
               <div style="font-size:12px;color:#666;">Livraison</div>
               <div>${deliveryLabel || "-"}</div>
             </div>
             <div>
-              <div style="font-size:12px;color:#666;">Paiement</div>
+              <div style="font-size:12px;color:#666; margin-left:15px">Paiement</div>
               <div>${paymentLabel || "-"}</div>
             </div>
           </div>
