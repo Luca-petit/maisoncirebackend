@@ -1,4 +1,11 @@
-export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentLabel, itemsHtml,ibanHtml }) {
+export function orderConfirmationEmail({
+  orderId,
+  total,
+  deliveryLabel,
+  paymentLabel,
+  itemsHtml,
+  ibanHtml, // ✅ nouveau
+}) {
   const year = new Date().getFullYear();
 
   return `<!doctype html>
@@ -15,6 +22,16 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
           Merci pour votre commande. Nous vous tiendrons informé(e) à chaque étape.
         </p>
 
+        <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
+          <p style="margin:0 0 8px;"><strong>Numéro de commande :</strong> ${orderId}</p>
+
+          ${itemsHtml ? `<div style="margin:0 0 10px;">${itemsHtml}</div>` : ""}
+
+          <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
+          <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
+          <p style="margin:0;"><strong>Total :</strong> ${total} €</p>
+        </div>
+
         ${ibanHtml ? `
           <div style="margin-top:14px;background:#fff;border:1px solid #eee;border-radius:12px;padding:14px;">
             <h3 style="margin:0 0 8px;font-size:15px;">Informations de paiement (virement)</h3>
@@ -24,13 +41,6 @@ export function orderConfirmationEmail({ orderId, total, deliveryLabel, paymentL
             </p>
           </div>
         ` : ""}
-
-        <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
-            <p style="margin:0 0 8px;"><strong>Numéro de commande :</strong> ${orderId}</p>
-          <p style="margin:0 0 8px;">${itemsHtml || ""}</p>
-          <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
-          <p style="margin:0;"><strong>Paiement :</strong> ${paymentLabel}</p>
-        </div>
 
         <p style="margin:16px 0 0;color:#666;font-size:13px;line-height:1.5;">
           Si vous n’êtes pas à l’origine de cette commande, ignorez cet email.

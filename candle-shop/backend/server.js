@@ -674,6 +674,22 @@ try {
 const deliveryLabel = delivery_mode === "shipping" ? "Envoi à domicile" : "Retrait en magasin";
 const paymentLabel = payment_mode === "cash" ? "Cash" : "Virement";
 
+// ----- IBAN uniquement si paiement par virement -----
+const isTransfer = payment_mode === "transfer"; // IMPORTANT
+const iban = process.env.BANK_IBAN || "";
+const bic = process.env.BANK_BIC || "";
+const owner = process.env.BANK_OWNER || "";
+
+const ibanHtml = (isTransfer && iban)
+  ? `
+    <div style="margin-top:10px;background:#fff;border:1px solid #eee;border-radius:10px;padding:12px;">
+      <p style="margin:0 0 6px;"><strong>Titulaire :</strong> ${owner || "Maison Cire"}</p>
+      <p style="margin:0 0 6px;"><strong>IBAN :</strong> ${iban}</p>
+      ${bic ? `<p style="margin:0;"><strong>BIC :</strong> ${bic}</p>` : ""}
+    </div>
+  `
+  : "";
+
 // email client (best-effort)
 try {
   await sendMail({
