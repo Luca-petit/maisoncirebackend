@@ -18,6 +18,7 @@ const SUPABASE_BUCKET = "products";
 
 const supa = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
+const ENABLE_NOTIFY = false; // ✅ coupe la feature "me prévenir"
 
 const STORAGE_KEY = "candle_shop_products_v2";
 const CART_KEY = "candle_shop_cart_v2";
@@ -899,8 +900,8 @@ function updatePackChosenUI() {
 
   if (els.packStep2Subtitle) {
     els.packStep2Subtitle.textContent = chosenPackSize === 3
-      ? "Choisis 3 bougies (la moins chère est offerte)."
-      : "Choisis 5 bougies (les 2 moins chères sont offertes).";
+      ? "Choisis 3 articles (le moins chère est offert)."
+      : "Choisis 5 articles (les 2 moins chèrs sont offerts).";
   }
 }
 
@@ -926,7 +927,16 @@ function renderProducts() {
   els.grid.innerHTML = "";
 
   for (const p of products) {
-    const inStock = availableStock(p.id) > 0;
+
+    const inStock = true;
+    const dbStock = Number(p.stock || 0); // ✅ stock réel en DB
+if (dbStock <= 0) continue;           // ✅ masqué seulement si stock DB à 0
+
+// option : pour afficher “reste X dispo” / gérer bouton
+const leftForCart = availableStock(p.id); // stock dispo après ce qu’il y a déjà dans le panier
+const canAdd = leftForCart > 0;
+
+
 
     // ⭐ rating data
     const r = getAvgRating(p.id);
@@ -989,6 +999,12 @@ function openPdp(productId) {
   }
 
   currentPdpId = productId;
+
+  // ✅ Désactive totalement "me prévenir"
+if (!ENABLE_NOTIFY) {
+  if (els.pdpNotifyRow) els.pdpNotifyRow.style.display = "none";
+}
+
 
 
 if (els.pdpNotifyRow) {
@@ -1298,10 +1314,14 @@ function renderPackPicker() {
   const units = Object.values(packSelection).reduce((a, b) => a + b, 0);
 
   for (const p of products) {
+    if (Number(p.stock || 0) <= 0) continue; // ✅ masque uniquement si stock DB = 0
+
     const qty = packSelection[p.id] || 0;
 
     const leftForWizard = availableStockForPackBuilder(p.id);
-    const isOut = leftForWizard <= 0;
+    const isOut = leftForWizard <= 0; // ✅ on l'affiche quand même, juste en "out"
+
+
 
     // ✅ Avis (étoiles + moyenne + nb)
     const rr = getAvgRating(p.id);
@@ -1369,7 +1389,7 @@ function renderPackPreview() {
   if (els.packProgress) els.packProgress.textContent = `${units} / ${size}`;
 
   if (units === 0) {
-    els.packPreviewLines.innerHTML = `<p class="muted">Sélectionne des bougies pour composer ton pack.</p>`;
+    els.packPreviewLines.innerHTML = `<p class="muted">Sélectionne des artciles pour composer ton pack.</p>`;
   } else {
     els.packPreviewLines.innerHTML = items
       .map(it => {
@@ -1409,11 +1429,11 @@ function renderPackPreview() {
       const remaining = Math.max(0, size - units);
       els.packHint.textContent = remaining === 0
         ? ""
-        : `Ajoute encore ${remaining} bougie(s) pour compléter le pack. (Prix en cours: ${formatEUR(liveValue)})`;
+        : `Ajoute encore ${remaining} article(s) pour compléter le pack. (Prix en cours: ${formatEUR(liveValue)})`;
     } else {
       els.packHint.textContent = size === 3
-        ? "Offert : la bougie la moins chère du pack."
-        : "Offert : les 2 bougies les moins chères du pack.";
+        ? "Offert : l'artcile le moins cher du pack."
+        : "Offert : les 2 articles les moins chers du pack.";
     }
   }
 }
@@ -1959,7 +1979,7 @@ if (delBtn) {
 
       const left = availableStockForPackBuilder(id);
       if (left <= 0) {
-        if (els.packMsg) els.packMsg.textContent = "Stock insuffisant pour cette bougie.";
+        if (els.packMsg) els.packMsg.textContent = "Stock insuffisant pour cette article.";
         setTimeout(() => { if (els.packMsg) els.packMsg.textContent = ""; }, 2000);
         return;
       }
@@ -2021,48 +2041,50 @@ els.pdpReviewBtn?.addEventListener("click", () => {
 });
 
 
+if (ENABLE_NOTIFY) 
+{
+  els.pdpNotifyToggle?.addEventListener("change", async () => {
+    if (!currentPdpId) return;
 
-els.pdpNotifyToggle?.addEventListener("change", async () => {
-  if (!currentPdpId) return;
+    const on = !!els.pdpNotifyToggle.checked;
+    const email = (els.pdpNotifyEmail?.value || "").trim().toLowerCase();
 
-  const on = !!els.pdpNotifyToggle.checked;
-  const email = (els.pdpNotifyEmail?.value || "").trim().toLowerCase();
+    // ON => email obligatoire
+    if (on) {
+      if (!isValidEmail(email)) {
+        els.pdpNotifyToggle.checked = false;
+        if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l’alerte.";
+        return;
+      }
 
-  // ON => email obligatoire
-  if (on) {
-    if (!isValidEmail(email)) {
-      els.pdpNotifyToggle.checked = false;
-      if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l’alerte.";
+      try {
+        if (els.pdpMsg) els.pdpMsg.textContent = "Activation...";
+        await apiNotifySubscribe(currentPdpId, email);
+
+        if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = true;
+        if (els.pdpMsg) els.pdpMsg.textContent = "✅ Alerte activée. On te prévient quand ça revient.";
+      } catch (e) {
+        els.pdpNotifyToggle.checked = false;
+        if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur activation"}`;
+      }
+
       return;
     }
 
+    // OFF => delete en DB
     try {
-      if (els.pdpMsg) els.pdpMsg.textContent = "Activation...";
-      await apiNotifySubscribe(currentPdpId, email);
+      if (els.pdpMsg) els.pdpMsg.textContent = "Désactivation...";
+      await apiNotifyUnsubscribe(currentPdpId, email);
 
-      if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = true;
-      if (els.pdpMsg) els.pdpMsg.textContent = "✅ Alerte activée. On te prévient quand ça revient.";
+      if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = false;
+      if (els.pdpMsg) els.pdpMsg.textContent = "Alerte désactivée ✅";
     } catch (e) {
-      els.pdpNotifyToggle.checked = false;
-      if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur activation"}`;
+      // si ça fail, on remet ON pour cohérence UI
+      els.pdpNotifyToggle.checked = true;
+      if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur désactivation"}`;
     }
-
-    return;
-  }
-
-  // OFF => delete en DB
-  try {
-    if (els.pdpMsg) els.pdpMsg.textContent = "Désactivation...";
-    await apiNotifyUnsubscribe(currentPdpId, email);
-
-    if (els.pdpNotifyEmail) els.pdpNotifyEmail.readOnly = false;
-    if (els.pdpMsg) els.pdpMsg.textContent = "Alerte désactivée ✅";
-  } catch (e) {
-    // si ça fail, on remet ON pour cohérence UI
-    els.pdpNotifyToggle.checked = true;
-    if (els.pdpMsg) els.pdpMsg.textContent = `❌ ${e?.message || "Erreur désactivation"}`;
-  }
-});
+  });
+}
 
 
 els.pdpNotifyEmail?.addEventListener("input", () => {
@@ -2138,7 +2160,7 @@ if (els.clearCartBtn) {
 if (els.checkoutBtn) {
   els.checkoutBtn.addEventListener("click", () => {
     if (totalCartCount() === 0) {
-      toast("Ajoute au moins une bougie 🙂");
+      toast("Ajoute au moins un article 🙂");
       return;
     }
     // ✅ on va sur checkout

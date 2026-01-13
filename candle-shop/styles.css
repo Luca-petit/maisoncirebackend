@@ -1891,10 +1891,7 @@ a[href^="mailto"] { color: inherit !important; }
   opacity: .6;
 }
 
-.packPick.is-out .packPick__actions{
-  pointer-events: none;
-  opacity: .5;
-}
+
 
 .packPick__media{
   position: relative;
@@ -3029,4 +3026,31 @@ a,
 
 #adminToggleFinished{
   margin-top: 10px;
+}
+
+/* === Pack builder : produit indisponible === */
+.packPick.is-out {
+  opacity: 0.75;
+}
+
+/* + désactivé */
+.packPick.is-out button[data-pack-inc] {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* ➖ bouton moins MIS EN AVANT */
+.packPick.is-out button[data-pack-dec] {
+  opacity: 1;
+  cursor: pointer;
+  background: #111;
+  color: #fff;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+/* hover sur le moins */
+.packPick.is-out button[data-pack-dec]:hover {
+  background: #000;
+  transform: scale(1.05);
 }
