@@ -15,6 +15,7 @@ export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, payme
         </div>
       </div>
     </div>
+    
   </body>
 </html>`;
 }

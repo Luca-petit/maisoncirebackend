@@ -228,8 +228,7 @@ async function loadAdminOrders() {
   els.adminOrdersList.innerHTML = "";
 
   try {
-    const mode = showFinishedOrders ? "archive" : "";
-    const data = await apiAdminLoadOrders(mode);
+    const data = await apiAdminLoadOrders(showFinishedOrders);
     let orders = data.orders || [];
 
 
@@ -396,12 +395,13 @@ async function apiLoadCart() {
   return data?.cart || null;
 }
 
-async function apiAdminLoadOrders(mode = "") {
-  const qs = mode ? `?mode=${encodeURIComponent(mode)}` : "";
+async function apiAdminLoadOrders(includeDone = false) {
+  const qs = includeDone ? `?include_done=1` : `?include_done=0`;
   return apiFetch(`/api/admin/orders${qs}`, {
     headers: { 'x-admin-key': getAdminKey() }
   });
 }
+
 
 
 
