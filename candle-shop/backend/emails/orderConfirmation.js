@@ -30,7 +30,7 @@ export function orderConfirmationEmail({
 
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
           <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
-          <p style="margin:0;"><strong>Statut :</strong> ${statusLabel} €</p>
+          <p style="margin:0;"><strong>Statut :</strong> ${statusLabel}</p>
         </div>
 
         ${ibanHtml ? `

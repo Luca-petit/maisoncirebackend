@@ -699,6 +699,11 @@ const ibanHtml = (isTransfer && iban)
   `
   : "";
 
+  const statusLabel =
+      payment_mode === "transfer"
+        ? "en attente du virement"
+        : "preparation";
+
 // email client (best-effort)
 try {
   await sendMail({
@@ -711,6 +716,7 @@ try {
       paymentLabel,
       itemsHtml,
       ibanHtml,
+      statusLabel,
     }),
   });
 } catch (e) {
