@@ -585,6 +585,51 @@ app.post("/api/orders", async (req, res) => {
     if (!email || !email.includes("@")) return bad(res, 400, "Email invalide");
     if (!cart || typeof cart !== "object") return bad(res, 400, "Panier invalide");
 
+        // --- Build toDec (singles + packs) pour décrément ATOMIQUE ---
+    const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
+      ? cart.skus
+      : {};
+    const packs = Array.isArray(cart?.packs) ? cart.packs : [];
+
+    const toDec = {}; // { productId: qtyToRemove }
+
+    // singles
+    for (const [pidRaw, qtyRaw] of Object.entries(skus)) {
+      const pid = String(pidRaw || "").trim();
+      const q = Math.floor(Number(qtyRaw) || 0);
+      if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+    }
+
+    // packs
+    for (const pack of packs) {
+      const items = Array.isArray(pack?.items) ? pack.items : [];
+      for (const it of items) {
+        const pid = String(it?.id || "").trim();
+        const q = Math.floor(Number(it?.qty) || 0);
+        if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
+      }
+    }
+
+    // ✅ Décrément stock ATOMIQUE (anti double click / concurrence)
+try {
+  if (Object.keys(toDec).length) {
+    const { error: decErr } = await supabase.rpc("decrement_stock_bulk", { items: toDec });
+    if (decErr) throw decErr;
+  }
+} catch (e) {
+  const msg = String(e?.message || e);
+
+  if (msg.includes("insufficient_stock:")) {
+    const pid = msg.split("insufficient_stock:")[1]?.trim() || "";
+    return bad(res, 409, `Stock insuffisant (produit ${pid})`);
+  }
+
+  console.error("❌ STOCK decrement rpc error:", msg);
+  return bad(res, 500, "Erreur stock");
+}
+
+
+
     const { data, error } = await supabase
       .from("orders")
       .insert({
@@ -609,73 +654,6 @@ try {
 } catch (e) {
   console.error("itemsHtml error:", e?.message || e);
   itemsHtml = `<p style="margin:0;color:#666;">(Impossible de charger les articles)</p>`;
-}
-
-// --- Décrément stock en DB (singles + packs) ---
-try {
-  const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
-    ? cart.skus
-    : {};
-
-  const packs = Array.isArray(cart?.packs) ? cart.packs : [];
-
-  // 1) build { id -> qtyToRemove }
-  const toDec = {};
-
-  // singles
-  for (const [pidRaw, qtyRaw] of Object.entries(skus)) {
-    const pid = String(pidRaw || "").trim();
-    const q = Math.floor(Number(qtyRaw) || 0);
-    if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
-  }
-
-  // packs
-  for (const pack of packs) {
-    const items = Array.isArray(pack?.items) ? pack.items : [];
-    for (const it of items) {
-      const pid = String(it?.id || "").trim();
-      const q = Math.floor(Number(it?.qty) || 0);
-      if (pid && q > 0) toDec[pid] = (toDec[pid] || 0) + q;
-    }
-  }
-
-  const ids = Object.keys(toDec);
-  if (ids.length) {
-    // 2) fetch all stocks in one query
-    const { data: rows, error: readErr } = await supabase
-      .from("products")
-      .select("id,stock")
-      .in("id", ids);
-
-    if (readErr) throw readErr;
-
-    const foundIds = new Set((rows || []).map(r => String(r.id)));
-    const missing = ids.filter(id => !foundIds.has(id));
-    if (missing.length) {
-      console.error("STOCK decrement: produits introuvables:", missing);
-    }
-
-    // 3) update each found row
-    for (const r of (rows || [])) {
-      const pid = String(r.id);
-      const current = Number(r.stock || 0);
-      const q = Number(toDec[pid] || 0);
-      const next = Math.max(0, current - q);
-
-      const { error: upErr } = await supabase
-        .from("products")
-        .update({ stock: next })
-        .eq("id", pid);
-
-      if (upErr) throw upErr;
-    }
-
-    console.log("✅ STOCK decremented:", toDec);
-  } else {
-    console.log("ℹ️ STOCK decrement: rien à décrémenter (panier vide?)");
-  }
-} catch (e) {
-  console.error("❌ STOCK decrement error:", e?.message || e);
 }
 
 
@@ -747,8 +725,18 @@ try {
 
     return ok(res, { ok: true, order_id: data?.id });
   } catch (e) {
-    return bad(res, 500, e?.message || "Erreur création commande");
+  // rollback best-effort si on a décrémenté puis crash après
+  try {
+    if (typeof toDec === "object" && toDec && Object.keys(toDec).length) {
+      await supabase.rpc("increment_stock_bulk", { items: toDec });
+    }
+  } catch (rb) {
+    console.error("⚠️ rollback stock failed:", rb?.message || rb);
   }
+
+  return bad(res, 500, e?.message || "Erreur création commande");
+}
+
 });
 
 // ---------- Reviews ----------
