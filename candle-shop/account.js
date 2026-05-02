@@ -223,18 +223,22 @@
       const { data, error } = await supa.auth.signUp({ email, password });
       if (error) throw new Error(error.message);
 
-      if (data.session) {
-        // Pas de confirmation d'email requise → connexion immédiate
-        const token = data.session.access_token;
-        const role  = await getRole(data.user.id);
-        const user  = { email: data.user.email, role };
-        setAuth(token, user);
-        showLogged(user);
-      } else {
-        // Confirmation par email requise
-        setMsg(elSignupMsg, "✅ Vérifiez votre boîte email pour confirmer votre compte.");
-        if (btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
+      // Récupère la session — signUp() la retourne directement si
+      // "Confirm email" est désactivé dans Supabase Auth settings.
+      // Sinon on force un signIn immédiat.
+      let session = data.session;
+      if (!session) {
+        const { data: loginData, error: loginErr } = await supa.auth.signInWithPassword({ email, password });
+        if (loginErr) throw new Error(loginErr.message);
+        session = loginData.session;
       }
+
+      if (!session) throw new Error("Impossible de créer la session. Réessayez.");
+
+      const role = await getRole(session.user.id);
+      const user = { email: session.user.email, role };
+      setAuth(session.access_token, user);
+      showLogged(user);
     } catch (err) {
       setMsg(elSignupMsg, "❌ " + (err?.message || "Erreur création compte."));
       if (btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
