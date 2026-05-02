@@ -87,11 +87,11 @@
       </div>
 
       <!-- Logged -->
-      <div id="accountBox" class="accountProfile" style="display:none;">
-        <div class="accountProfile__avatar" id="accountAvatar"></div>
-        <div class="accountProfile__info">
-          <p class="tiny muted">Connecté en tant que</p>
-          <strong id="accountEmail">—</strong>
+      <div id="accountBox" class="userProfile" style="display:none;">
+        <div class="userProfile__avatar" id="accountAvatar"></div>
+        <div class="userProfile__info">
+          <p class="userProfile__greeting" id="accountGreeting">Bonjour !</p>
+          <p class="userProfile__email" id="accountEmail">—</p>
           <span class="roleBadge" id="accountRole"></span>
         </div>
         <button type="button" class="btn btn--ghost" id="logoutBtn">Se déconnecter</button>
@@ -102,11 +102,38 @@
     <section class="section reveal" id="myOrders" style="display:none;">
       <div class="section__head">
         <h2>Mes commandes</h2>
-        <p class="muted">Historique lié à votre adresse email.</p>
+        <p class="muted" id="myOrdersMsg">Chargement…</p>
       </div>
-      <div class="dashCard">
-        <p id="myOrdersMsg" class="tiny muted">Chargement…</p>
-        <div id="myOrdersList"></div>
+      <div id="myOrdersList" class="ordersList"></div>
+
+      <!-- Empty state -->
+      <div id="myOrdersEmpty" class="ordersEmpty" style="display:none;">
+        <div class="ordersEmpty__icon">🕯️</div>
+        <h3 class="ordersEmpty__title">Pas encore de commande</h3>
+        <p class="ordersEmpty__sub">Vos futures commandes apparaîtront ici.</p>
+        <a href="index.html" class="btn btn--primary">Découvrir la boutique</a>
+      </div>
+    </section>
+
+    <!-- ── CARTES CADEAUX (user) ────────────────────── -->
+    <section class="section reveal" id="myGiftCards" style="display:none;">
+      <div class="section__head">
+        <h2>Mes cartes cadeaux</h2>
+      </div>
+
+      <nav class="dashTabs" id="gcTabs" style="margin-bottom:20px;">
+        <button class="dashTab__btn is-active" data-gc-tab="received" type="button">🎁 Reçues</button>
+        <button class="dashTab__btn" data-gc-tab="sent" type="button">📤 Envoyées</button>
+      </nav>
+
+      <div id="gcReceived">
+        <p class="tiny muted" id="gcReceivedMsg">Chargement…</p>
+        <div id="gcReceivedList" class="gcList"></div>
+      </div>
+
+      <div id="gcSent" style="display:none;">
+        <p class="tiny muted" id="gcSentMsg">Chargement…</p>
+        <div id="gcSentList" class="gcList"></div>
       </div>
     </section>
 

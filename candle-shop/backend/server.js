@@ -11,8 +11,9 @@ import { supabase } from "./supabase.js";
 import { sendMail } from "./mailer.js";
 
 import { orderConfirmationEmail } from "./emails/orderConfirmation.js";
-import { adminNewOrderEmail } from "./emails/adminNewOrder.js";
-import { orderStatusEmail } from "./emails/orderStatus.js";
+import { adminNewOrderEmail }     from "./emails/adminNewOrder.js";
+import { orderStatusEmail }       from "./emails/orderStatus.js";
+import { giftCardEmail }          from "./emails/giftCardEmail.js";
 
 
 const app = express();
@@ -178,6 +179,93 @@ function countItemsInCart(cart) {
     giftcards.length
   );
 }
+
+// ---------- Gift card helpers ----------
+
+function generateGiftCardCode() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const seg = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return `MC-${seg(4)}-${seg(4)}-${seg(4)}`;
+}
+
+async function sendGiftCardMail(gc) {
+  const shopUrl = process.env.SHOP_URL || "https://backendmaisoncire.onrender.com";
+  await sendMail({
+    to: gc.recipient_email,
+    subject: `Maison Cire — Votre carte cadeau de ${Number(gc.initial_amount).toFixed(0)} €`,
+    html: giftCardEmail({
+      code:           gc.code,
+      amount:         gc.initial_amount,
+      fromName:       gc.from_name,
+      message:        gc.message,
+      recipientEmail: gc.recipient_email,
+      color:          gc.color || "ambre",
+      shopUrl,
+    }),
+  });
+}
+
+async function sendPendingGiftCards() {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const { data: pending, error } = await supabase
+      .from("gift_cards")
+      .select("*")
+      .or(`send_date.lte.${today},send_date.is.null`)
+      .is("sent_at", null)
+      .eq("is_active", true);
+    if (error) throw error;
+    for (const gc of pending || []) {
+      try {
+        await sendGiftCardMail(gc);
+        await supabase.from("gift_cards").update({ sent_at: new Date().toISOString() }).eq("id", gc.id);
+        console.log(`✅ Gift card sent: ${gc.code} → ${gc.recipient_email}`);
+      } catch (e) {
+        console.error(`❌ Gift card send failed ${gc.code}:`, e.message);
+      }
+    }
+  } catch (e) {
+    console.error("sendPendingGiftCards error:", e.message);
+  }
+}
+
+async function createGiftCardsFromOrder(orderId, cartGiftcards, senderEmail) {
+  const today = new Date().toISOString().split("T")[0];
+  for (const gc of cartGiftcards || []) {
+    let code;
+    for (let i = 0; i < 10; i++) {
+      code = generateGiftCardCode();
+      const { data: existing } = await supabase.from("gift_cards").select("id").eq("code", code).maybeSingle();
+      if (!existing) break;
+    }
+    const sendDate = gc.sendDate || today;
+    const { data: created, error } = await supabase
+      .from("gift_cards")
+      .insert({
+        code,
+        initial_amount:  Math.round(Number(gc.amount || 0) * 100) / 100,
+        balance:         Math.round(Number(gc.amount || 0) * 100) / 100,
+        sender_email:    senderEmail,
+        recipient_email: String(gc.receiver || "").toLowerCase(),
+        from_name:       gc.fromName  || "",
+        message:         gc.message   || "",
+        color:           gc.color     || "ambre",
+        send_date:       sendDate,
+        order_id:        orderId,
+      })
+      .select("*")
+      .single();
+    if (error) { console.error("createGiftCard error:", error.message); continue; }
+    if (sendDate <= today) {
+      try { await sendGiftCardMail(created); await supabase.from("gift_cards").update({ sent_at: new Date().toISOString() }).eq("id", created.id); }
+      catch (e) { console.error("Gift card immediate send error:", e.message); }
+    }
+  }
+}
+
+// Vérification toutes les heures + au démarrage
+setTimeout(sendPendingGiftCards, 10_000);
+setInterval(sendPendingGiftCards, 60 * 60 * 1000);
 
 function computeFreeUnitsSingles(qty) {
   const q = Math.max(0, Math.floor(Number(qty) || 0));
@@ -650,6 +738,25 @@ try {
 }
 
 
+    // Créer les gift cards achetées dans cette commande
+    if (giftcards.length) {
+      createGiftCardsFromOrder(data.id, giftcards, email).catch(e =>
+        console.error("createGiftCardsFromOrder error:", e.message)
+      );
+    }
+
+    // Appliquer le code cadeau si fourni
+    const gcCode     = String(req.body?.gift_card_code || "").trim().toUpperCase();
+    const gcDiscount = Number(req.body?.gift_card_discount || 0);
+    if (gcCode && gcDiscount > 0) {
+      const { data: gcRow } = await supabase.from("gift_cards").select("id,balance").eq("code", gcCode).maybeSingle();
+      if (gcRow) {
+        const used = Math.min(gcDiscount, gcRow.balance);
+        const newBalance = Math.max(0, Math.round((gcRow.balance - used) * 100) / 100);
+        await supabase.from("gift_cards").update({ balance: newBalance, is_active: newBalance > 0 }).eq("id", gcRow.id);
+      }
+    }
+
     return ok(res, { ok: true, order_id: data?.id });
   } catch (e) {
   // rollback best-effort si on a décrémenté puis crash après
@@ -1048,6 +1155,92 @@ try {
     return ok(res, { ok: true, order });
   } catch (e) {
     return bad(res, 500, e?.message || "Erreur update statut");
+  }
+});
+
+// ---------- Gift Cards ----------
+
+// Valider un code (public — checkout)
+app.get("/api/gift-cards/validate/:code", async (req, res) => {
+  try {
+    const code = String(req.params.code || "").trim().toUpperCase();
+    if (!code) return bad(res, 400, "Code manquant");
+
+    const { data, error } = await supabase
+      .from("gift_cards")
+      .select("id,code,balance,initial_amount,recipient_email,is_active")
+      .eq("code", code)
+      .maybeSingle();
+    if (error) throw error;
+    if (!data) return bad(res, 404, "Code invalide");
+    if (!data.is_active || data.balance <= 0) return bad(res, 400, "Cette carte cadeau a déjà été utilisée");
+
+    return ok(res, {
+      valid:            true,
+      balance:          Number(data.balance),
+      initial_amount:   Number(data.initial_amount),
+      recipient_email:  data.recipient_email,
+    });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur validation");
+  }
+});
+
+// Cartes reçues (compte utilisateur)
+app.get("/api/account/gift-cards/received", requireAuth, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.user.email);
+    const { data, error } = await supabase
+      .from("gift_cards")
+      .select("id,code,initial_amount,balance,from_name,message,color,send_date,sent_at,is_active,created_at")
+      .eq("recipient_email", email)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ok(res, { gift_cards: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur cartes reçues");
+  }
+});
+
+// Cartes envoyées (compte utilisateur)
+app.get("/api/account/gift-cards/sent", requireAuth, async (req, res) => {
+  try {
+    const email = normalizeEmail(req.user.email);
+    const { data, error } = await supabase
+      .from("gift_cards")
+      .select("id,code,initial_amount,balance,recipient_email,from_name,send_date,sent_at,is_active,created_at")
+      .eq("sender_email", email)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ok(res, { gift_cards: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur cartes envoyées");
+  }
+});
+
+// Admin — toutes les cartes
+app.get("/api/admin/gift-cards", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("gift_cards")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ok(res, { gift_cards: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur liste gift cards");
+  }
+});
+
+// Admin — désactiver une carte
+app.delete("/api/admin/gift-cards/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const { error } = await supabase.from("gift_cards").update({ is_active: false, balance: 0 }).eq("id", id);
+    if (error) throw error;
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur désactivation");
   }
 });
 

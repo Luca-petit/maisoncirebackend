@@ -253,5 +253,38 @@ insert into public.testimonials (name, rating, body, date_label, approved) value
 on conflict do nothing;
 
 -- ============================================================
+-- 8) GIFT CARDS
+-- ============================================================
+create table if not exists public.gift_cards (
+  id              uuid         primary key default gen_random_uuid(),
+  code            text         unique not null,
+
+  initial_amount  numeric(10,2) not null,
+  balance         numeric(10,2) not null,
+
+  sender_email    text         not null,
+  recipient_email text         not null,
+  from_name       text         not null default '',
+  message         text         not null default '',
+  color           text         not null default 'ambre',
+
+  send_date       date,
+  sent_at         timestamptz,
+
+  is_active       boolean      not null default true,
+  order_id        uuid         references public.orders(id) on delete set null,
+  created_at      timestamptz  not null default now()
+);
+
+create index if not exists gift_cards_code_idx
+  on public.gift_cards(code);
+create index if not exists gift_cards_recipient_idx
+  on public.gift_cards(recipient_email);
+create index if not exists gift_cards_sender_idx
+  on public.gift_cards(sender_email);
+create index if not exists gift_cards_pending_idx
+  on public.gift_cards(send_date, sent_at) where sent_at is null;
+
+-- ============================================================
 -- FIN
 -- ============================================================

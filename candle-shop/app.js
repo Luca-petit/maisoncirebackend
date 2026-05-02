@@ -80,11 +80,11 @@ async function ensureSessionId() {
 ========== */
 
 const DEFAULT_PRODUCTS = [
-  { id: "vanille", name: "Bougie Vanille", price: 18.9, stock: 12, description: "Douce, chaleureuse, ultra cocooning.", image: "assets/vanille.jpg" },
-  { id: "ambre", name: "Bougie Ambre", price: 21.5, stock: 9, description: "Ambrée et élégante, vibe hôtel.", image: "assets/ambre.jpg" },
-  { id: "figue", name: "Bougie Figue", price: 20.0, stock: 7, description: "Fruité chic, parfait salon.", image: "assets/figue.jpg" },
-  { id: "coton", name: "Bougie Coton", price: 17.5, stock: 15, description: "Propre et légère, effet linge frais.", image: "assets/coton.jpg" },
-  { id: "santal", name: "Bougie Santal", price: 22.9, stock: 5, description: "Boisé premium, très apaisant.", image: "assets/santal.jpg" },
+  { id: "bague-solitaire",  name: "Bague Solitaire",   price: 89.0,  stock: 8,  description: "Diamant rond 0,3 ct, monture or jaune 18k.", image: "assets/vanille.jpg" },
+  { id: "collier-perles",   name: "Collier Perles",    price: 125.0, stock: 6,  description: "Perles d'eau douce, fermoir or 14k.", image: "assets/ambre.jpg" },
+  { id: "bracelet-jonc",    name: "Bracelet Jonc",     price: 74.0,  stock: 10, description: "Jonc fin or 18k, ultra-élégant.", image: "assets/figue.jpg" },
+  { id: "boucles-creoles",  name: "Créoles Dorées",    price: 58.0,  stock: 14, description: "Créoles légères, plaquées or 24k.", image: "assets/coton.jpg" },
+  { id: "pendentif-coeur",  name: "Pendentif Cœur",    price: 95.0,  stock: 5,  description: "Cœur serti de zircons, chaîne fine incluse.", image: "assets/santal.jpg" },
 ];
 
 
@@ -727,15 +727,15 @@ function updatePackChosenUI() {
   }
 
   els.packChosenText.textContent = chosenPackSize === 3
-    ? "Pack sélectionné : Pack 3 (1 offerte)"
-    : "Pack sélectionné : Pack 5 (2 offertes)";
+    ? "Pack sélectionné : Pack 3 (1 offert)"
+    : "Pack sélectionné : Pack 5 (2 offerts)";
 
   els.packGoStep2.disabled = false;
 
   if (els.packStep2Subtitle) {
     els.packStep2Subtitle.textContent = chosenPackSize === 3
-      ? "Choisis 3 articles (le moins chère est offert)."
-      : "Choisis 5 articles (les 2 moins chèrs sont offerts).";
+      ? "Choisis 3 bijoux (le moins cher est offert)."
+      : "Choisis 5 bijoux (les 2 moins chers sont offerts).";
   }
 }
 
@@ -985,7 +985,7 @@ function computeTotals() {
     const saved = free * p.price;
     discount += saved;
 
-    if (free > 0) hintParts.push(`${free} offerte(s) sur “${p.name}”`);
+    if (free > 0) hintParts.push(`${free} offert(s) sur “${p.name}”`);
   }
 
   // Packs
@@ -1047,7 +1047,7 @@ function renderCart() {
       item.innerHTML = `
         <div>
           <h4>${escapeHTML(p.name)}</h4>
-          <p>${qty} unité(s) · ${free} offerte(s) → ${payable} payée(s)</p>
+          <p>${qty} pièce(s) · ${free} offert(s) → ${payable} payée(s)</p>
           <p>${formatEUR(p.price)} / unité</p>
         </div>
         <div class="qty" aria-label="Quantité">
@@ -1208,7 +1208,7 @@ function renderPackPreview() {
   if (els.packProgress) els.packProgress.textContent = `${units} / ${size}`;
 
   if (units === 0) {
-    els.packPreviewLines.innerHTML = `<p class="muted">Sélectionne des artciles pour composer ton pack.</p>`;
+    els.packPreviewLines.innerHTML = `<p class="muted">Sélectionne des bijoux pour composer ton pack.</p>`;
   } else {
     els.packPreviewLines.innerHTML = items
       .map(it => {
@@ -1248,11 +1248,11 @@ function renderPackPreview() {
       const remaining = Math.max(0, size - units);
       els.packHint.textContent = remaining === 0
         ? ""
-        : `Ajoute encore ${remaining} article(s) pour compléter le pack. (Prix en cours: ${formatEUR(liveValue)})`;
+        : `Ajoute encore ${remaining} bijou(x) pour compléter le pack. (Prix en cours : ${formatEUR(liveValue)})`;
     } else {
       els.packHint.textContent = size === 3
-        ? "Offert : l'artcile le moins cher du pack."
-        : "Offert : les 2 articles les moins chers du pack.";
+        ? "Offert : le bijou le moins cher du pack."
+        : "Offerts : les 2 bijoux les moins chers du pack.";
     }
   }
 }
@@ -1280,7 +1280,7 @@ async function addPackToCart() {
   const totals = computePackTotals(items, size, products);
 
   const packId = `pack_${Date.now()}`;
-  const packName = size === 3 ? "Pack 3 (1 offerte)" : "Pack 5 (2 offertes)";
+  const packName = size === 3 ? "Pack 3 (1 offert)" : "Pack 5 (2 offerts)";
 
   cart.packs.push({
     id: packId,
@@ -2347,14 +2347,14 @@ window.loadAdminPendingTestimonials = loadAdminPendingTestimonials;
 ========== */
 
 const TESTIMONIALS_FALLBACK = [
-  { name: "Sofia M.",   rating: 5, body: "La bougie Santal est absolument divine — ça sent le luxe à prix accessible. Je recommande les yeux fermés !", date_label: "Avril 2025" },
-  { name: "Lucas R.",   rating: 5, body: "J'ai offert le Pack 3 à ma femme pour son anniversaire, elle a adoré. La présentation est super soignée.", date_label: "Mars 2025" },
-  { name: "Emma D.",    rating: 5, body: "La bougie Vanille est tellement cocooning ! Elle dure longtemps et la maison sent trop bon. J'en ai commandé 3.", date_label: "Avril 2025" },
-  { name: "Thomas B.",  rating: 4, body: "Livraison rapide, produits de qualité. La bougie Ambre est devenue mon coup de cœur. Le pack 5 est une vraie bonne affaire.", date_label: "Mars 2025" },
-  { name: "Chloé L.",   rating: 5, body: "Ça fait 3 commandes chez Maison Cire, jamais déçue. La carte cadeau est super pratique pour les cadeaux de dernière minute.", date_label: "Février 2025" },
-  { name: "Nathan V.",  rating: 5, body: "Qualité premium, parfums qui durent vraiment longtemps. La bougie Coton est parfaite pour le bureau, subtile et fraîche.", date_label: "Janvier 2025" },
-  { name: "Inès K.",    rating: 5, body: "Packaging soigné, odeurs incroyables. La Bougie Figue est une révélation. Je reviendrai sans hésiter.", date_label: "Mars 2025" },
-  { name: "Romain T.",  rating: 5, body: "Très belle découverte ! Le pack 3 est un excellent rapport qualité-prix. Les bougies brûlent proprement et l'odeur tient bien.", date_label: "Février 2025" },
+  { name: "Sofia M.",   rating: 5, body: "La bague solitaire est absolument sublime — l'or est d'une qualité impeccable. Je la porte tous les jours !", date_label: "Avril 2025" },
+  { name: "Lucas R.",   rating: 5, body: "J'ai offert le Pack 3 à ma femme pour notre anniversaire, elle a été touchée aux larmes. Présentation digne d'une grande maison.", date_label: "Mars 2025" },
+  { name: "Emma D.",    rating: 5, body: "Le collier perles est d'une élégance rare. Le fermoir est solide et le soin du détail se voit. J'en ai commandé un second.", date_label: "Avril 2025" },
+  { name: "Thomas B.",  rating: 4, body: "Livraison soignée, bijoux de qualité. Le bracelet jonc est devenu mon incontournable. Le pack 5 est une vraie affaire.", date_label: "Mars 2025" },
+  { name: "Chloé L.",   rating: 5, body: "Ça fait 3 commandes chez Maison Cire, jamais déçue. La carte cadeau est idéale pour les cadeaux de dernière minute.", date_label: "Février 2025" },
+  { name: "Nathan V.",  rating: 5, body: "Finitions premium, pièces qui ne ternissent pas. Le pendentif cœur est parfait comme cadeau, mes amis l'ont adoré.", date_label: "Janvier 2025" },
+  { name: "Inès K.",    rating: 5, body: "Packaging luxueux, bijoux magnifiques. Les créoles dorées sont légères et élégantes. Je reviendrai sans hésiter.", date_label: "Mars 2025" },
+  { name: "Romain T.",  rating: 5, body: "Très belle découverte ! Le pack 3 est un excellent rapport qualité-prix. Les bijoux sont beaux et bien finis.", date_label: "Février 2025" },
 ];
 
 function initTestimonials() {

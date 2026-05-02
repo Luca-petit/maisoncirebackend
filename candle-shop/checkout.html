@@ -54,7 +54,21 @@
 
         <div id="coPayHint" class="muted"></div>
 
-        <button type="submit" class="btn">Confirmer la commande</button>
+        <!-- Code cadeau -->
+        <div id="gcSection" style="border:1px solid rgba(201,168,67,.30);border-radius:14px;padding:16px;background:rgba(201,168,67,.05);">
+          <p style="margin:0 0 10px;font-weight:700;font-size:14px;">🎁 Code cadeau</p>
+          <div style="display:flex;gap:8px;">
+            <input id="coGcCode" type="text" placeholder="MC-XXXX-XXXX-XXXX"
+              style="flex:1;height:44px;border-radius:10px;border:1.5px solid rgba(0,0,0,.12);background:#fff;padding:0 12px;font-size:14px;text-transform:uppercase;letter-spacing:.06em;" />
+            <button type="button" id="coGcApply" class="btn" style="white-space:nowrap;">Appliquer</button>
+          </div>
+          <p id="coGcMsg" style="margin:8px 0 0;font-size:13px;"></p>
+          <div id="coGcApplied" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(74,108,88,.10);border-radius:10px;display:none;">
+            <strong id="coGcAppliedLabel" style="color:#2d6a4f;font-size:14px;"></strong>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn--primary" style="margin-top:4px;">Confirmer la commande</button>
         <div id="coMsg" class="muted"></div>
       </form>
     </section>

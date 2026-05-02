@@ -218,6 +218,61 @@
     els.delivery?.addEventListener("change", () => renderRules(els));
     els.payment?.addEventListener("change", () => renderRules(els));
 
+    // ── Gift card code ───────────────────────────────────
+    let appliedGcCode     = "";
+    let appliedGcDiscount = 0;
+
+    const gcCodeInput   = document.getElementById("coGcCode");
+    const gcApplyBtn    = document.getElementById("coGcApply");
+    const gcMsg         = document.getElementById("coGcMsg");
+    const gcAppliedDiv  = document.getElementById("coGcApplied");
+    const gcAppliedLbl  = document.getElementById("coGcAppliedLabel");
+
+    function setGcMsg(text, color = "#888") {
+      if (gcMsg) { gcMsg.textContent = text; gcMsg.style.color = color; }
+    }
+
+    function showGcApplied(code, discount) {
+      appliedGcCode     = code;
+      appliedGcDiscount = discount;
+      if (gcAppliedDiv) { gcAppliedDiv.style.display = ""; }
+      if (gcAppliedLbl) gcAppliedLbl.textContent = `✓ ${code} — ${formatEUR(discount)} déduits`;
+      if (gcCodeInput)  gcCodeInput.readOnly = true;
+      if (gcApplyBtn)   { gcApplyBtn.textContent = "Retirer"; gcApplyBtn.onclick = removeGc; }
+      // mettre à jour le total affiché
+      const totalsNow = computeTotals(loadCart(), productsMap);
+      const finalTotal = Math.max(0, totalsNow.total - discount);
+      if (els.total) els.total.textContent = formatEUR(finalTotal);
+    }
+
+    function removeGc() {
+      appliedGcCode = ""; appliedGcDiscount = 0;
+      if (gcAppliedDiv)  gcAppliedDiv.style.display = "none";
+      if (gcCodeInput)   { gcCodeInput.readOnly = false; gcCodeInput.value = ""; }
+      if (gcApplyBtn)    { gcApplyBtn.textContent = "Appliquer"; gcApplyBtn.onclick = applyGc; }
+      setGcMsg("Code retiré.", "#888");
+      const totalsNow = computeTotals(loadCart(), productsMap);
+      if (els.total) els.total.textContent = formatEUR(totalsNow.total);
+    }
+
+    async function applyGc() {
+      const code = (gcCodeInput?.value || "").trim().toUpperCase();
+      if (!code) return setGcMsg("Entrez un code.", "#c00");
+      setGcMsg("Vérification…");
+      try {
+        const data = await apiFetch(`/api/gift-cards/validate/${encodeURIComponent(code)}`);
+        const totalsNow = computeTotals(loadCart(), productsMap);
+        const discount  = Math.min(data.balance, totalsNow.total);
+        showGcApplied(code, discount);
+        setGcMsg(`Carte valide — solde disponible : ${formatEUR(data.balance)}`, "#2d6a4f");
+      } catch (err) {
+        setGcMsg("❌ " + (err?.message || "Code invalide"), "#c00");
+      }
+    }
+
+    if (gcApplyBtn) gcApplyBtn.onclick = applyGc;
+    // ─────────────────────────────────────────────────────
+
     const sid = getSessionId();
     if (!sid) {
       setMsg(els, "⚠️ Session panier manquante. Retourne sur la boutique et ajoute un produit.");
@@ -273,8 +328,9 @@
       const totalsNow = computeTotals(cart, productsMap);
       const total = totalsNow.total + Number(delivery_fee || 0);
 
+      const gcDiscount = appliedGcDiscount || 0;
       const payload = {
-        session_id: sid,
+        session_id:         sid,
         email,
         phone,
         delivery_mode,
@@ -282,7 +338,9 @@
         address,
         delivery_fee,
         cart,
-        total,
+        total:              Math.max(0, total - gcDiscount),
+        gift_card_code:     appliedGcCode     || undefined,
+        gift_card_discount: gcDiscount        || undefined,
         status: "preparation",
       };
 
