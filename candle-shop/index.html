@@ -174,7 +174,7 @@
     </section>
 
     <!-- Carte Cadeau -->
-  <!-- <section class="section reveal" id="giftcard">
+   <section class="section reveal" id="giftcard">
     <div class="section__head">
       <h2>Carte Cadeau</h2>
       <p class="muted">Offrez une ambiance Maison Cire — personnalisation en direct.</p>
@@ -213,7 +213,6 @@
       </p>
     </div>
 
-    --Form--
     <div class="gift__form">
       <div class="gift__grid">
         <label class="label">
@@ -275,7 +274,36 @@
       <p class="formMsg" id="gcMsg" role="status" aria-live="polite"></p>
     </div>
   </div>
-</section> -->
+</section>
+    <!-- Avis clients -->
+    <section class="section reveal" id="avis">
+
+      <!-- Header row -->
+      <div class="testiTop">
+        <h2 class="testiTop__title">Ce que disent nos clients</h2>
+        <button class="btn btn--primary" id="openTestiForm" type="button">
+          ✍&nbsp; Laisser un avis
+        </button>
+      </div>
+
+      <!-- Score centré, grand, sans cadre -->
+      <div class="testiScoreBlock">
+        <span class="testiScoreBlock__num" id="testiAvgNum">4,9</span>
+        <div class="testiScoreBlock__stars" id="testiAvgStars">★★★★★</div>
+        <span class="testiScoreBlock__label" id="testiAvgLabel">127 avis vérifiés</span>
+      </div>
+
+      <!-- Carousel -->
+      <div class="testiCarouselWrap">
+        <button class="testiArrow" id="testiPrev" aria-label="Précédent">&#8249;</button>
+        <div class="testiViewport" id="testiViewport">
+          <div class="testiTrack" id="testiTrack"></div>
+        </div>
+        <button class="testiArrow" id="testiNext" aria-label="Suivant">&#8250;</button>
+      </div>
+
+      <div class="testiDots" id="testiDots"></div>
+    </section>
   </main>
 
   <!-- Cart Drawer -->
@@ -328,69 +356,6 @@
     </div>
   </footer>
 
-<!-- Reviews VIEW Modal -->
-<div class="modal modal--top" id="reviewsViewModal" aria-hidden="true">
-  <div class="modal__overlay" data-reviews-view-close></div>
-
-  <div class="modal__panel" role="dialog" aria-modal="true">
-    <div class="modal__head">
-      <strong>Avis clients</strong>
-      <button class="iconBtn" data-reviews-view-close>✕</button>
-    </div>
-
-    <div class="modal__body">
-      <div class="reviewsSummary">
-        <div id="reviewsAvgStars"></div>
-        <div>
-          <strong id="reviewsAvgText">0,0</strong> / 5  
-          <div class="muted tiny"><span id="reviewsCount">0</span> avis</div>
-        </div>
-      </div>
-
-      <div class="reviewsList" id="reviewsList"></div>
-    </div>
-  </div>
-</div>
-
-<!-- Reviews FORM Modal -->
-<div class="modal modal--top" id="reviewsFormModal" aria-hidden="true">
-  <div class="modal__overlay" data-reviews-form-close></div>
-
-  <div class="modal__panel" role="dialog" aria-modal="true">
-    <div class="modal__head">
-      <strong>Laisser un avis</strong>
-      <button class="iconBtn" data-reviews-form-close>✕</button>
-    </div>
-
-    <div class="modal__body">
-      
-      <form id="reviewForm">
-        <label class="label">
-          Votre prénom
-          <input id="reviewName" required />
-        </label>
-
-        <label class="label" style="min-width:160px;">
-          Note
-          <input type="hidden" id="reviewRating" value="5" />
-          <div id="reviewStars"></div>
-        </label>
-
-
-        <label class="label">
-          Commentaire (optionnel)
-          <textarea id="reviewText"></textarea>
-        </label>
-
-        <button class="btn btn--primary">Publier l’avis</button>
-        <p class="formMsg" id="reviewMsg"></p>
-      </form>
-    </div>
-  </div>
-</div>
-
-
-
 <!-- Product Modal (PDP) -->
 <div class="pdpModal" id="pdpModal" aria-hidden="true">
   <div class="pdpModal__overlay" id="pdpOverlay" aria-hidden="true"></div>
@@ -415,17 +380,7 @@
             <div class="pdpStock muted" id="pdpStock"></div>
           </div>
 
-          <div class="pdpRating">
-            <div id="pdpStars" class="pdpStars" data-open-reviews></div>
-            <span id="pdpRatingMeta">0,0 · 0 avis</span>
-
-            <button class="btnReviewSmall" id="pdpReviewBtn">
-              Laisser un avis
-            </button>
-          </div>
-
-
-          <p class="pdpDesc" id="pdpDesc"></p>
+          <p class="pdpDesc" id="pdpDescription"></p>
 
           <button class="btn btn--primary w100" id="pdpAddToCart" type="button">
             Ajouter au panier
@@ -459,6 +414,66 @@
       </div>
     </div>
   </aside>
+</div>
+
+<!-- Testimonial Form Modal -->
+<div class="testiModal" id="testiFormModal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Laisser un avis">
+  <div class="testiModal__overlay" id="testiFormOverlay"></div>
+
+  <div class="testiModal__panel">
+    <button class="testiModal__close" id="testiFormClose" aria-label="Fermer">✕</button>
+
+    <!-- State: form -->
+    <div id="testiFormState">
+      <div class="testiModal__header">
+        <div class="testiModal__icon">✍</div>
+        <h3 class="testiModal__title">Votre expérience</h3>
+        <p class="testiModal__sub">Votre avis sera publié après validation de notre équipe.</p>
+      </div>
+
+      <form id="testiForm" class="testiModal__form">
+
+        <label class="testiField">
+          <span class="testiField__label">Votre prénom</span>
+          <input class="testiField__input" id="testiName" type="text"
+            placeholder="Ex : Sofia M." autocomplete="given-name" required />
+        </label>
+
+        <div class="testiRatingBlock">
+          <span class="testiField__label">Note</span>
+          <div class="testiStarPicker" id="testiStarPicker" role="radiogroup" aria-label="Choisir une note">
+            <button type="button" class="testiStarBtn" data-testi-star="1" aria-label="1 étoile">★</button>
+            <button type="button" class="testiStarBtn" data-testi-star="2" aria-label="2 étoiles">★</button>
+            <button type="button" class="testiStarBtn" data-testi-star="3" aria-label="3 étoiles">★</button>
+            <button type="button" class="testiStarBtn" data-testi-star="4" aria-label="4 étoiles">★</button>
+            <button type="button" class="testiStarBtn" data-testi-star="5" aria-label="5 étoiles">★</button>
+          </div>
+          <span class="testiRatingHint" id="testiRatingHint">Sélectionnez une note</span>
+          <input type="hidden" id="testiRating" value="0" />
+        </div>
+
+        <label class="testiField">
+          <span class="testiField__label">Votre avis</span>
+          <textarea class="testiField__input testiField__input--area" id="testiBody"
+            rows="4" placeholder="Partagez votre expérience avec Maison Cire…" required></textarea>
+        </label>
+
+        <button class="btn btn--primary w100 testiModal__submit" type="submit">
+          Publier mon avis
+        </button>
+        <p class="testiFormMsg" id="testiFormMsg"></p>
+      </form>
+    </div>
+
+    <!-- State: success -->
+    <div id="testiSuccessState" class="testiModal__success" style="display:none;">
+      <div class="testiSuccess__icon">✓</div>
+      <h3 class="testiSuccess__title">Merci pour votre avis !</h3>
+      <p class="testiSuccess__sub">Il sera publié après validation de notre équipe — généralement sous 24h.</p>
+      <button class="btn btn--ghost" id="testiSuccessClose">Fermer</button>
+    </div>
+
+  </div>
 </div>
 
 <div class="toast" id="toast" aria-live="polite"></div>

@@ -15,7 +15,6 @@ import { adminNewOrderEmail } from "./emails/adminNewOrder.js";
 import { orderStatusEmail } from "./emails/orderStatus.js";
 
 
-
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
@@ -188,61 +187,46 @@ function computeFreeUnitsSingles(qty) {
   return group5 * 2 + group3 * 1;
 }
 
-// ---------- Auth (JWT) ----------
-function signToken(user) {
-  const payload = { sub: user.id, email: user.email, role: user.role };
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-function readBearer(req) {
+// ---------- Auth via Supabase ----------
+function readToken(req) {
   const h = String(req.headers.authorization || "");
-  if (!h.toLowerCase().startsWith("bearer ")) return "";
-  return h.slice(7).trim();
+  if (h.toLowerCase().startsWith("bearer ")) return h.slice(7).trim();
+  return String(req.headers["x-admin-key"] || "").trim();
 }
-function verifyToken(token) {
+
+async function getAuthUser(req) {
+  const token = readToken(req);
   if (!token) return null;
   try {
-    return jwt.verify(token, JWT_SECRET);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return { id: user.id, email: user.email };
   } catch {
     return null;
   }
 }
-function getAuthUser(req) {
-  // Authorization: Bearer <jwt>
-  const bearer = readBearer(req);
-  const p1 = verifyToken(bearer);
-  if (p1?.email) return p1;
 
-  // Compat: x-admin-key contains jwt (for your existing app.js calls)
-  const x = String(req.headers["x-admin-key"] || "").trim();
-  const p2 = verifyToken(x);
-  if (p2?.email) return p2;
-
-  return null;
-}
-
-function requireAuth(req, res, next) {
-  const u = getAuthUser(req);
+async function requireAuth(req, res, next) {
+  const u = await getAuthUser(req);
   if (!u?.email) return bad(res, 401, "Non connecté");
   req.user = u;
   next();
 }
 
 async function requireAdmin(req, res, next) {
-  const u = getAuthUser(req);
+  const u = await getAuthUser(req);
   if (!u?.email) return bad(res, 401, "Non connecté");
 
-  // ✅ IMPORTANT : on re-check en DB, comme ça si tu changes role à la main, ça marche sans re-login
   try {
-    const email = normalizeEmail(u.email);
     const { data, error } = await supabase
-      .from("users")
+      .from("profiles")
       .select("role")
-      .eq("email", email)
+      .eq("id", u.id)
       .maybeSingle();
     if (error) throw error;
 
-    const role = data?.role || u.role || "user";
-    if (role !== "admin") return bad(res, 401, "Admin requis");
+    const role = data?.role || "user";
+    if (role !== "admin") return bad(res, 403, "Admin requis");
 
     req.user = { ...u, role };
     return next();
@@ -251,79 +235,22 @@ async function requireAdmin(req, res, next) {
   }
 }
 
-// ---------- Auth routes ----------
-app.post("/api/auth/signup", async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body?.email);
-    const password = String(req.body?.password || "");
+// ---------- Auth routes (Supabase Auth) ----------
 
-    if (!email || !email.includes("@")) return bad(res, 400, "Email invalide");
-    if (password.length < 6) return bad(res, 400, "Mot de passe trop court (min 6)");
-
-    const { data: existing, error: exErr } = await supabase
-      .from("users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    if (exErr) throw exErr;
-    if (existing?.id) return bad(res, 409, "Un compte existe déjà avec cet email");
-
-    const password_hash = await bcrypt.hash(password, 10);
-
-    const { data: created, error: cErr } = await supabase
-      .from("users")
-      .insert({ email, password_hash, role: "user" })
-      .select("id,email,role")
-      .single();
-    if (cErr) throw cErr;
-
-    const token = signToken(created);
-    return ok(res, { token, user: { email: created.email, role: created.role } });
-  } catch (e) {
-    return bad(res, 500, e?.message || "Erreur signup");
-  }
-});
-
-app.post("/api/auth/login", async (req, res) => {
-  try {
-    const email = normalizeEmail(req.body?.email);
-    const password = String(req.body?.password || "");
-    if (!email || !password) return bad(res, 400, "Email et mot de passe requis");
-
-    const { data: user, error } = await supabase
-      .from("users")
-      .select("id,email,role,password_hash")
-      .eq("email", email)
-      .maybeSingle();
-    if (error) throw error;
-    if (!user?.id) return bad(res, 401, "Identifiants invalides");
-
-    const okPwd = await bcrypt.compare(password, user.password_hash || "");
-    if (!okPwd) return bad(res, 401, "Identifiants invalides");
-
-    const token = signToken(user);
-    return ok(res, { token, user: { email: user.email, role: user.role } });
-  } catch (e) {
-    return bad(res, 500, e?.message || "Erreur login");
-  }
-});
-
-// ✅ refresh role from DB (important when you set admin manually)
+// Session check + rôle — utilisé par le frontend au chargement
 app.get("/api/auth/me", async (req, res) => {
-  const u = getAuthUser(req);
-  if (!u?.email) return bad(res, 401, "Non connecté");
-
   try {
-    const email = normalizeEmail(u.email);
-    const { data, error } = await supabase
-      .from("users")
-      .select("email,role")
-      .eq("email", email)
-      .maybeSingle();
-    if (error) throw error;
+    const u = await getAuthUser(req);
+    if (!u?.email) return bad(res, 401, "Non connecté");
 
-    const role = data?.role || u.role || "user";
-    return ok(res, { user: { email, role } });
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", u.id)
+      .maybeSingle();
+
+    const role = profile?.role || "user";
+    return ok(res, { user: { email: u.email, role } });
   } catch (e) {
     return bad(res, 500, e?.message || "Erreur me");
   }
@@ -908,6 +835,92 @@ app.delete("/api/admin/products/:id", requireAdmin, async (req, res) => {
     return ok(res, { ok: true });
   } catch (e) {
     return bad(res, 500, e?.message || "Erreur suppression produit");
+  }
+});
+
+// ---------- Testimonials ----------
+
+app.get("/api/testimonials", async (_req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("testimonials")
+      .select("id,name,rating,body,date_label")
+      .eq("approved", true)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ok(res, { testimonials: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur témoignages");
+  }
+});
+
+app.post("/api/testimonials", async (req, res) => {
+  try {
+    const name      = String(req.body?.name  || "").trim();
+    const body      = String(req.body?.body  || "").trim();
+    const rating    = Number(req.body?.rating || 0);
+    const dateLabel = String(req.body?.date_label || "").trim();
+
+    if (!name)                                         return bad(res, 400, "Nom requis");
+    if (!body)                                         return bad(res, 400, "Texte requis");
+    if (!Number.isFinite(rating) || rating < 1 || rating > 5)
+                                                       return bad(res, 400, "Note invalide (1-5)");
+
+    const { data, error } = await supabase
+      .from("testimonials")
+      .insert({ name, body, rating, date_label: dateLabel, approved: false })
+      .select("id")
+      .single();
+    if (error) throw error;
+
+    return ok(res, { ok: true, id: data.id });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur ajout témoignage");
+  }
+});
+
+app.get("/api/admin/testimonials/pending", requireAdmin, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("testimonials")
+      .select("id,name,rating,body,date_label,created_at")
+      .eq("approved", false)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return ok(res, { testimonials: data || [] });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur avis en attente");
+  }
+});
+
+app.patch("/api/admin/testimonials/:id/approve", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) return bad(res, 400, "id manquant");
+
+    const { error } = await supabase
+      .from("testimonials")
+      .update({ approved: true })
+      .eq("id", id);
+    if (error) throw error;
+
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur approbation");
+  }
+});
+
+app.delete("/api/admin/testimonials/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    if (!id) return bad(res, 400, "id manquant");
+
+    const { error } = await supabase.from("testimonials").delete().eq("id", id);
+    if (error) throw error;
+
+    return ok(res, { ok: true });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur suppression témoignage");
   }
 });
 

@@ -225,5 +225,33 @@ revoke update(role) on public.profiles from authenticated;
 -- (si tu veux activer RLS plus tard, on le fera ensemble proprement)
 
 -- ============================================================
+-- 7) TESTIMONIALS (avis généraux carrousel)
+-- ============================================================
+create table if not exists public.testimonials (
+  id          uuid       primary key default gen_random_uuid(),
+  name        text       not null,
+  rating      smallint   not null check (rating between 1 and 5),
+  body        text       not null,
+  date_label  text       not null default '',
+  approved    boolean    not null default false,
+  created_at  timestamptz not null default now()
+);
+
+create index if not exists testimonials_approved_idx
+  on public.testimonials(approved, created_at desc);
+
+-- Seed : 8 avis pré-approuvés
+insert into public.testimonials (name, rating, body, date_label, approved) values
+  ('Sofia M.',   5, 'La bougie Santal est absolument divine — ça sent le luxe à prix accessible. Je recommande les yeux fermés !', 'Avril 2025', true),
+  ('Lucas R.',   5, 'J''ai offert le Pack 3 à ma femme pour son anniversaire, elle a adoré. La présentation est super soignée.', 'Mars 2025', true),
+  ('Emma D.',    5, 'La bougie Vanille est tellement cocooning ! Elle dure longtemps et la maison sent trop bon. J''en ai commandé 3.', 'Avril 2025', true),
+  ('Thomas B.',  4, 'Livraison rapide, produits de qualité. La bougie Ambre est devenue mon coup de cœur. Le pack 5 est une vraie bonne affaire.', 'Mars 2025', true),
+  ('Chloé L.',   5, 'Ça fait 3 commandes chez Maison Cire, jamais déçue. La carte cadeau est super pratique pour les cadeaux de dernière minute.', 'Février 2025', true),
+  ('Nathan V.',  5, 'Qualité premium, parfums qui durent vraiment longtemps. La bougie Coton est parfaite pour le bureau, subtile et fraîche.', 'Janvier 2025', true),
+  ('Inès K.',    5, 'Packaging soigné, odeurs incroyables. La Bougie Figue est une révélation. Je reviendrai sans hésiter.', 'Mars 2025', true),
+  ('Romain T.',  5, 'Très belle découverte ! Le pack 3 est un excellent rapport qualité-prix. Les bougies brûlent proprement et l''odeur tient bien.', 'Février 2025', true)
+on conflict do nothing;
+
+-- ============================================================
 -- FIN
 -- ============================================================

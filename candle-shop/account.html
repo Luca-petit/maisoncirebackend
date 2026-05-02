@@ -5,16 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Maison Cire — Mon compte</title>
   <link rel="stylesheet" href="styles.css" />
-  <!-- Supabase JS (needed because app.js uses window.supabase for Storage uploads) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <header class="header">
 
+  <header class="header">
+    <div class="brand">
+      <span class="brandDot"></span>
+      <span class="brandText">Maison Cire</span>
+    </div>
     <nav class="nav" id="nav" aria-label="Navigation">
-      <a href="index.html">Retour a l'accueil</a>
+      <a href="index.html">← Retour à la boutique</a>
     </nav>
-
     <div class="headerActions">
       <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
         <span class="hamburger__bars" aria-hidden="true"></span>
@@ -22,251 +24,260 @@
     </div>
   </header>
 
-
   <main class="main">
+
+    <!-- ── AUTH ─────────────────────────────────────── -->
     <section class="section reveal" id="account">
       <div class="section__head">
         <h2>Mon compte</h2>
         <p class="muted" id="accountSubtitle">Connexion / Inscription</p>
       </div>
 
-      <!-- ✅ NOT LOGGED: tabs login/signup -->
-      <div id="authBox" class="adminBox">
-        <div class="row" style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button type="button" class="btn" id="tabLogin">Se connecter</button>
-          <button type="button" class="btn btn--ghost" id="tabSignup">S'inscrire</button>
-        </div>
+      <!-- Not logged -->
+      <div id="authBox" class="authCard">
 
-        <div style="margin-top:12px;" id="authForms">
-          <!-- Login -->
-          <form id="loginForm" class="adminForm">
-            <label class="tiny muted">Email</label>
-            <input class="input" type="email" id="loginEmail" placeholder="email@exemple.com" required />
+        <form id="loginForm" class="authForm">
+          <h3 class="authForm__title">Connexion</h3>
 
-            <label class="tiny muted" style="margin-top:10px;">Mot de passe</label>
-            <input class="input" type="password" id="loginPassword" placeholder="Entrez votre mot de passe" required />
+          <label class="label">
+            Email
+            <input class="input" type="email" id="loginEmail"
+              placeholder="email@exemple.com" autocomplete="email" required />
+          </label>
 
-            <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-              <button class="btn" type="submit">Connexion</button>
-              <span class="tiny muted" id="loginMsg"></span>
-            </div>
-          </form>
+          <label class="label">
+            Mot de passe
+            <input class="input" type="password" id="loginPassword"
+              placeholder="Votre mot de passe" autocomplete="current-password" required />
+          </label>
 
-          <!-- Signup -->
-          <form id="signupForm" class="adminForm" style="display:none;">
-            <label class="tiny muted">Email</label>
-            <input class="input" type="email" id="signupEmail" placeholder="email@exemple.com" required />
+          <button class="btn btn--primary w100" type="submit">Se connecter</button>
+          <p class="formMsg" id="loginMsg"></p>
 
-            <label class="tiny muted" style="margin-top:10px;">Mot de passe</label>
-            <input class="input" type="password" id="signupPassword" placeholder="Créez votre mot de passe" required />
+          <p class="authSwitch">
+            Pas encore de compte ?
+            <a href="#" id="switchToSignup">Inscrivez-vous</a>
+          </p>
+        </form>
 
-            <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-              <button class="btn" type="submit">Créer mon compte</button>
-              <span class="tiny muted" id="signupMsg"></span>
-            </div>
-          </form>
-        </div>
+        <form id="signupForm" class="authForm" style="display:none;">
+          <h3 class="authForm__title">Créer un compte</h3>
+
+          <label class="label">
+            Email
+            <input class="input" type="email" id="signupEmail"
+              placeholder="email@exemple.com" autocomplete="email" required />
+          </label>
+
+          <label class="label">
+            Mot de passe
+            <input class="input" type="password" id="signupPassword"
+              placeholder="Min. 6 caractères" autocomplete="new-password" required />
+          </label>
+
+          <button class="btn btn--primary w100" type="submit">Créer mon compte</button>
+          <p class="formMsg" id="signupMsg"></p>
+
+          <p class="authSwitch">
+            Déjà un compte ?
+            <a href="#" id="switchToLogin">Connectez-vous</a>
+          </p>
+        </form>
+
       </div>
 
-      <!-- ✅ LOGGED: user header -->
-      <div id="accountBox" class="adminBox" style="display:none;">
-        <div style="display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap;">
-          <div>
-            <div class="tiny muted">Connecté en tant que</div>
-            <div><strong id="accountEmail">—</strong> <span class="tiny muted" id="accountRole"></span></div>
-          </div>
-          <button type="button" class="btn btn--ghost" id="logoutBtn">Se déconnecter</button>
+      <!-- Logged -->
+      <div id="accountBox" class="accountProfile" style="display:none;">
+        <div class="accountProfile__avatar" id="accountAvatar"></div>
+        <div class="accountProfile__info">
+          <p class="tiny muted">Connecté en tant que</p>
+          <strong id="accountEmail">—</strong>
+          <span class="roleBadge" id="accountRole"></span>
         </div>
+        <button type="button" class="btn btn--ghost" id="logoutBtn">Se déconnecter</button>
       </div>
     </section>
 
-    <!-- ✅ USER: orders list (linked to email) -->
+    <!-- ── MES COMMANDES (user) ───────────────────── -->
     <section class="section reveal" id="myOrders" style="display:none;">
       <div class="section__head">
         <h2>Mes commandes</h2>
-        <p class="muted">Historique lié à votre email.</p>
+        <p class="muted">Historique lié à votre adresse email.</p>
       </div>
-      <div class="adminBox">
-        <div id="myOrdersMsg" class="tiny muted">Chargement...</div>
-        <div id="myOrdersList" style="margin-top:10px;"></div>
+      <div class="dashCard">
+        <p id="myOrdersMsg" class="tiny muted">Chargement…</p>
+        <div id="myOrdersList"></div>
       </div>
     </section>
 
-     <!-- Admin -->
-    <section class="section reveal" id="admin">
+    <!-- ── DASHBOARD ADMIN ────────────────────────── -->
+    <section class="section reveal" id="admin" style="display:none;">
       <div class="section__head">
-        <h2>Admin</h2>
-        <p class="muted">Gestion produits</p>
+        <h2>Dashboard</h2>
+        <p class="muted">Gestion de la boutique Maison Cire.</p>
       </div>
 
-      <div class="adminBox">
-        <div id="adminAuth">
-          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <label class="label" style="min-width:240px;">
-              Code admin
-              <input id="adminCode" type="password" placeholder="admin123" />
-            </label>
-            <button class="btn btn--primary" id="adminLogin" type="button">Connexion</button>
-          </div>
-          <p class="formMsg" id="adminMsg" role="status" aria-live="polite"></p>
-        </div>
+      <!-- Legacy (kept for account.js compat, hidden) -->
+      <div id="adminAuth" style="display:none;"></div>
 
-        <div id="adminPanel" class="hidden">
-          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-            <label class="label" style="min-width:240px;">
-              Produit
-              <select id="adminSelect"></select>
-            </label>
-            <button id="adminDelete" class="btn btn--danger" type="button">Supprimer le produit</button>
-          </div>
+      <div id="adminPanel" class="hidden">
 
-          <div class="adminForm">
-            <label class="label">
-              Nom
-              <input id="adminName" type="text" />
-            </label>
+        <!-- Tabs -->
+        <nav class="dashTabs" id="dashTabs">
+          <button class="dashTab__btn is-active" data-dash-tab="produits" type="button">
+            <span>📦</span> Produits
+          </button>
+          <button class="dashTab__btn" data-dash-tab="commandes" type="button">
+            <span>🧾</span> Commandes
+          </button>
+          <button class="dashTab__btn" data-dash-tab="avis" type="button">
+            <span>⭐</span> Avis <span class="dashTab__badge" id="dashAvisBadge" style="display:none;"></span>
+          </button>
+        </nav>
 
-            <label class="label">
-              Prix (€)
-              <input id="adminPrice" type="number" step="0.01" min="0" />
-            </label>
+        <!-- ── Tab Produits ──────────────────────── -->
+        <div class="dashPanel" id="dashProduits">
 
-            <label class="label">
-              Stock
-              <input id="adminStock" type="number" step="1" min="0" />
-            </label>
-
-            <label class="label">
-              Description
-              <textarea id="adminDesc" rows="3"></textarea>
-            </label>
-          </div>
-
-          <!-- Admin: actions -->
-<div class="adminActions">
-  <button id="adminAddOpen" class="btn" type="button">+ Ajouter un produit</button>
-  <p class="tiny muted" id="adminAddMsg" style="margin:8px 0 0;"></p>
-</div>
-
-
-<!-- Admin: modal add product -->
-<div class="modal" id="adminAddModal" aria-hidden="true">
-  <div class="modal__overlay" data-admin-add-close></div>
-
-  <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Ajouter un produit">
-    <div class="modal__head">
-      <h3 style="margin:0;">Ajouter un produit</h3>
-      <button class="iconBtn" type="button" data-admin-add-close aria-label="Fermer">✕</button>
-    </div>
-
-    <form id="adminAddForm" class="modal__body">
-      <div class="formGrid">
-        <label class="field" style="display: none;">
-          <span>ID (unique) *</span>
-          <input id="adminAddId" />
-          <small class="tiny muted">Sans espace, ex: “bougie-vanille”.</small>
-        </label>
-
-        <label class="field">
-          <span>Nom *</span>
-          <input id="adminAddName" required placeholder="Bougie Vanille" />
-        </label>
-
-        <label class="field">
-          <span>Prix (€) *</span>
-          <input id="adminAddPrice" type="number" step="0.01" min="0" required placeholder="18.90" />
-        </label>
-
-        <label class="field">
-          <span>Stock *</span>
-          <input id="adminAddStock" type="number" step="1" min="0" required placeholder="12" />
-        </label>
-
-       <label class="field" style="grid-column:1/-1;">
-  <span>Image</span>
-
-  <div class="imgPicker">
-    <button class="btn btn--ghost" type="button" id="adminImgBtn">+ Ajouter une image</button>
-    <input id="adminImgFile" type="file" accept="image/*" hidden />
-    <img id="adminImgPreview" style="display:none; width:20%; border-radius:12px; margin-top:10px;" />
-    <span class="tiny muted" id="adminImgStatus">Aucune image</span>
-  </div>
-
-  <input id="adminAddImage" placeholder="URL générée automatiquement..." readonly />
-</label>
-
-
-        <label class="field" style="grid-column:1/-1;">
-          <span>Description</span>
-          <textarea id="adminAddDescription" rows="3" placeholder="Une description courte..."></textarea>
-        </label>
-      </div>
-
-      <div class="adminAddFooter">
-        <button class="btn btn--ghost" type="button" data-admin-add-close>Annuler</button>
-        <button class="btn" id="adminAddSubmit" type="submit">Créer</button>
-      </div>
-
-      <p class="tiny" id="adminAddFormMsg" style="margin:10px 0 0;"></p>
-    </form>
-  </div>
-</div>
-
-
-          <!-- Admin Reviews -->
-          <div class="adminReviews" style="margin-top:18px;">
-            <h3 style="margin:0 0 10px;">Avis du produit</h3>
-
-            <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-              <p class="muted" style="margin:0;">
-                Total : <strong id="adminReviewsCount">0</strong> · Moyenne : <strong id="adminReviewsAvg">0,0</strong>/5
-              </p>
-              <button class="btn btn--ghost" id="adminReviewsClear" type="button">Supprimer tous les avis</button>
+          <div class="dashCard">
+            <div class="dashCard__head">
+              <div>
+                <h3 class="dashCard__title">Modifier un produit</h3>
+                <p class="tiny muted">Sélectionne, modifie, puis sauvegarde.</p>
+              </div>
+              <div class="dashCard__controls">
+                <select id="adminSelect" class="input" style="min-width:200px;"></select>
+                <button id="adminDelete" class="btn btn--danger" type="button">Supprimer</button>
+              </div>
             </div>
 
-            <div id="adminReviewsList" style="margin-top:12px;"></div>
-            <p class="formMsg" id="adminReviewsMsg" role="status" aria-live="polite"></p>
+            <div class="adminForm">
+              <label class="label">
+                Nom du produit
+                <input id="adminName" type="text" placeholder="Bougie Vanille" />
+              </label>
+              <label class="label">
+                Prix (€)
+                <input id="adminPrice" type="number" step="0.01" min="0" placeholder="18.90" />
+              </label>
+              <label class="label">
+                Stock
+                <input id="adminStock" type="number" step="1" min="0" placeholder="12" />
+              </label>
+              <label class="label" style="grid-column:1/-1;">
+                Description
+                <textarea id="adminDescription" rows="3" placeholder="Une description courte…"></textarea>
+              </label>
+            </div>
+
+            <div class="dashCard__foot">
+              <button class="btn btn--primary" id="adminSave" type="button">Sauvegarder les modifications</button>
+              <button class="btn" id="adminAddOpen" type="button">+ Nouveau produit</button>
+              <p class="formMsg" id="adminSaveMsg"></p>
+            </div>
           </div>
 
-          <section class="adminCard" id="adminOrdersCard">
-            <h3>Commandes</h3>
+        </div>
 
-            <div class="tiny muted" id="adminOrdersMsg"></div>
+        <!-- ── Tab Commandes ─────────────────────── -->
+        <div class="dashPanel hidden" id="dashCommandes">
+
+          <div class="dashCard">
+            <div class="dashCard__head">
+              <div>
+                <h3 class="dashCard__title">Commandes</h3>
+                <p class="tiny muted" id="adminOrdersMsg">Chargement…</p>
+              </div>
+              <div class="dashCard__controls">
+                <span id="adminOrdersMode" class="statusPill">En cours</span>
+                <button id="adminToggleFinished" class="btn btn--ghost" type="button">
+                  Voir les terminées
+                </button>
+              </div>
+            </div>
 
             <div id="adminOrdersList" class="adminOrdersList"></div>
-
-            <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px;">
-              <button id="adminToggleFinished" class="btn btn--ghost">
-                Voir les commandes terminées
-              </button>
-              <span id="adminOrdersMode" class="tiny muted">
-                Commandes en cours
-              </span>
-            </div>
-
-
             <div id="adminOrderDetail" class="adminOrderDetail hidden"></div>
-
-            
-          </section>
-
-
-          <div class="row" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-            <button class="btn btn--primary" id="adminSave" type="button">Sauvegarder les modifications</button>
-            <p class="formMsg" id="adminSaveMsg" role="status" aria-live="polite"></p>
           </div>
+
         </div>
-      </div>
+
+        <!-- ── Tab Avis ──────────────────────────── -->
+        <div class="dashPanel hidden" id="dashAvis">
+
+          <div class="dashCard">
+            <div class="dashCard__head">
+              <div>
+                <h3 class="dashCard__title">Avis en attente de validation</h3>
+                <p class="tiny muted" id="adminTestiMsg">Chargement…</p>
+              </div>
+            </div>
+            <div id="adminTestiList"></div>
+          </div>
+
+        </div>
+
+      </div><!-- /adminPanel -->
     </section>
+
   </main>
+
+  <!-- Modal: Ajouter un produit -->
+  <div class="modal" id="adminAddModal" aria-hidden="true">
+    <div class="modal__overlay" data-admin-add-close></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-label="Ajouter un produit">
+      <div class="modal__head">
+        <strong>Nouveau produit</strong>
+        <button class="iconBtn" type="button" data-admin-add-close aria-label="Fermer">✕</button>
+      </div>
+      <form id="adminAddForm" class="modal__body">
+        <div class="formGrid">
+          <label class="field" style="display:none;">
+            <span>ID (unique) *</span>
+            <input id="adminAddId" />
+            <small class="tiny muted">Sans espace, ex: "bougie-vanille".</small>
+          </label>
+          <label class="field">
+            <span>Nom *</span>
+            <input id="adminAddName" required placeholder="Bougie Vanille" />
+          </label>
+          <label class="field">
+            <span>Prix (€) *</span>
+            <input id="adminAddPrice" type="number" step="0.01" min="0" required placeholder="18.90" />
+          </label>
+          <label class="field">
+            <span>Stock *</span>
+            <input id="adminAddStock" type="number" step="1" min="0" required placeholder="12" />
+          </label>
+          <label class="field" style="grid-column:1/-1;">
+            <span>Image</span>
+            <div class="imgPicker">
+              <button class="btn btn--ghost" type="button" id="adminImgBtn">+ Choisir une image</button>
+              <input id="adminImgFile" type="file" accept="image/*" hidden />
+              <img id="adminImgPreview" style="display:none; width:80px; border-radius:10px; margin-top:8px;" alt="" />
+              <span class="tiny muted" id="adminImgStatus">Aucune image sélectionnée</span>
+            </div>
+            <input id="adminAddImage" placeholder="URL générée automatiquement…" readonly style="margin-top:8px;" />
+          </label>
+          <label class="field" style="grid-column:1/-1;">
+            <span>Description</span>
+            <textarea id="adminAddDescription" rows="3" placeholder="Une description courte…"></textarea>
+          </label>
+        </div>
+        <div class="adminAddFooter">
+          <button class="btn btn--ghost" type="button" data-admin-add-close>Annuler</button>
+          <button class="btn btn--primary" id="adminAddSubmit" type="submit">Créer le produit</button>
+        </div>
+        <p class="tiny formMsg" id="adminAddFormMsg"></p>
+      </form>
+    </div>
+  </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>window.__PAGE__ = "account"</script>
-
- <script src="auth.js" defer></script>
-<script src="app.js" defer></script>
-<script src="account.js" defer></script>
+  <script src="auth.js" defer></script>
+  <script src="app.js" defer></script>
+  <script src="account.js" defer></script>
 
 </body>
 </html>

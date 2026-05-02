@@ -23,10 +23,8 @@ const ENABLE_NOTIFY = false; // ✅ coupe la feature "me prévenir"
 const STORAGE_KEY = "candle_shop_products_v2";
 const CART_KEY = "candle_shop_cart_v2";
 const NEWS_KEY = "candle_shop_newsletter_v1";
-const REVIEWS_KEY = "candle_shop_reviews_v1";
 const NOTIFY_KEY = "candle_shop_notify_v1";
 
-const ENABLE_GIFTCARDS = false;
 
 
 /* ========== 
@@ -59,10 +57,6 @@ async function apiFetch(path, opts = {}) {
   }
 
   return data;
-}
-
-function saveProducts(products) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
 }
 
 const SESSION_KEY = "candle_shop_session_id_v1";
@@ -384,11 +378,6 @@ async function apiAdminDeleteProduct(id){
 }
 
 
-async function apiLoadReviewSummary() {
-  const data = await apiFetch("/api/reviews/summary");
-  return (data?.summary && typeof data.summary === "object") ? data.summary : {};
-}
-
 async function apiLoadCart() {
   const sid = getSessionId();
   if (!sid) return null;
@@ -421,34 +410,6 @@ async function apiAdminUpdateOrderStatus(orderId, status) {
 }
 
 
-
-async function apiAddReview(productId, payload) {
-  const data = await apiFetch(`/api/reviews/${productId}`, { method: "POST", body: JSON.stringify(payload) });
-  return data?.review || null;
-}
-
-async function apiLoadReviews(productId) {
-  const data = await apiFetch(`/api/reviews/${productId}`);
-  return Array.isArray(data?.reviews) ? data.reviews : [];
-}
-
-async function apiAdminDeleteReview(reviewId) {
-  const adminKey = getAdminKey();
-  const data = await apiFetch(`/api/admin/reviews/${encodeURIComponent(reviewId)}`, {
-    method: "DELETE",
-    headers: { "x-admin-key": adminKey }
-  });
-  return data;
-}
-
-async function apiAdminClearReviews(productId) {
-  const adminKey = getAdminKey();
-  const data = await apiFetch(`/api/admin/reviews/product/${encodeURIComponent(productId)}`, {
-    method: "DELETE",
-    headers: { "x-admin-key": adminKey }
-  });
-  return data;
-}
 
 async function apiNotifySubscribe(productId, email) {
   return apiFetch(`/api/notify/${encodeURIComponent(productId)}`, {
@@ -543,103 +504,6 @@ function computePackTotals(packItems, packSize, products) {
 }
 
 /* ==========
-  Reviews (localStorage demo)
-========== */
-
-function loadReviewsMap() {
-  const raw = localStorage.getItem(REVIEWS_KEY);
-  const fallback = {};
-  if (!raw) return fallback;
-  try {
-    const parsed = JSON.parse(raw);
-    return (parsed && typeof parsed === "object") ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function saveReviewsMap(map) {
-  localStorage.setItem(REVIEWS_KEY, JSON.stringify(map));
-}
-
-let reviewsMap = {}; // fallback local
-let reviewSummary = {};
-
-function getReviews(productId) {
-  const list = reviewsMap[productId];
-  return Array.isArray(list) ? list : [];
-}
-
-function addReview(productId, review) {
-  if (!reviewsMap[productId]) reviewsMap[productId] = [];
-  reviewsMap[productId].unshift(review);
-  saveReviewsMap(reviewsMap);
-}
-
-function getAvgRating(productId) {
-  const s = reviewSummary?.[productId];
-  if (s) return { avg: Number(s.avg) || 0, count: Number(s.count) || 0 };
-
-  const list = getReviews(productId);
-  if (list.length === 0) return { avg: 0, count: 0 };
-  const sum = list.reduce((a, r) => a + (Number(r.rating) || 0), 0);
-  return { avg: sum / list.length, count: list.length };
-}
-
-function starsHTML(value) {
-  const v = Math.max(0, Math.min(5, Number(value) || 0));
-  const full = Math.floor(v);
-  const half = (v - full) >= 0.5 ? 1 : 0;
-  const empty = 5 - full - half;
-
-  const mk = (cls) => `<span class="star ${cls}"></span>`;
-  return `<div class="stars" aria-label="Note ${v.toFixed(1)} sur 5">
-    ${Array.from({ length: full }).map(() => mk("is-on")).join("")}
-    ${half ? mk("is-half") : ""}
-    ${Array.from({ length: empty }).map(() => mk("")).join("")}
-  </div>`;
-}
-
-/* ==========
-  Clickable stars input (modal)
-========== */
-
-function setReviewRating(rating) {
-  const r = Math.max(0, Math.min(5, Number(rating) || 0));
-  if (els.reviewRatingInput) els.reviewRatingInput.value = String(r);
-  if (els.reviewRatingSelect) els.reviewRatingSelect.value = String(r);
-  renderReviewStarsUI(r);
-}
-
-function getReviewRating() {
-  const v1 = els.reviewRatingInput?.value;
-  const v2 = els.reviewRatingSelect?.value;
-  const n = Number(v1 || v2 || 0);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function renderReviewStarsUI(current) {
-  if (!els.reviewStars) return;
-
-  const c = Math.max(0, Math.min(5, Number(current) || 0));
-  const btn = (i) => `
-    <button type="button"
-            class="starPick ${i <= c ? "is-on" : ""}"
-            data-star-pick="${i}"
-            aria-label="${i} étoile${i > 1 ? "s" : ""}"
-            aria-pressed="${i === c ? "true" : "false"}"></button>
-  `;
-
-  els.reviewStars.innerHTML = `
-    <div class="starPickRow" role="radiogroup" aria-label="Choisir une note">
-      ${[1, 2, 3, 4, 5].map(btn).join("")}
-    </div>
-    <div class="tiny muted" style="margin-top:8px;">Note : <strong>${c}</strong> / 5</div>
-  `;
-}
-
-
-/* ==========
   Global state
 ========== */
 
@@ -648,8 +512,6 @@ let cart = loadCart();
 
 let packSelection = {};
 let chosenPackSize = null;
-
-let currentReviewProductId = null;
 
 let currentPdpId = null;
 
@@ -743,31 +605,6 @@ const els = {
   gcCustomWrap: document.getElementById("gcCustomWrap"),
   gcCustomAmount: document.getElementById("gcCustomAmount"),
 
-  // Reviews Modal
-  // Reviews (2 modals)
-reviewsViewModal: document.getElementById("reviewsViewModal"),
-reviewsFormModal: document.getElementById("reviewsFormModal"),
-
-reviewsAvgStars: document.getElementById("reviewsAvgStars"),
-reviewsAvgText: document.getElementById("reviewsAvgText"),
-reviewsCount: document.getElementById("reviewsCount"),
-reviewsList: document.getElementById("reviewsList"),
-
-reviewForm: document.getElementById("reviewForm"),
-reviewName: document.getElementById("reviewName"),
-reviewStars: document.getElementById("reviewStars"),
-reviewRatingInput: document.getElementById("reviewRating"),
-reviewText: document.getElementById("reviewText"),
-reviewMsg: document.getElementById("reviewMsg"),
-
-
-  // Admin reviews
-  adminReviewsCount: document.getElementById("adminReviewsCount"),
-  adminReviewsAvg: document.getElementById("adminReviewsAvg"),
-  adminReviewsList: document.getElementById("adminReviewsList"),
-  adminReviewsClear: document.getElementById("adminReviewsClear"),
-  adminReviewsMsg: document.getElementById("adminReviewsMsg"),
-
   adminOrdersMsg: document.getElementById("adminOrdersMsg"),
 adminOrdersList: document.getElementById("adminOrdersList"),
 adminOrderDetail: document.getElementById("adminOrderDetail"),
@@ -781,8 +618,6 @@ adminOrderDetail: document.getElementById("adminOrderDetail"),
   pdpImg: document.getElementById("pdpImg"),
   pdpPrice: document.getElementById("pdpPrice"),
   pdpStock: document.getElementById("pdpStock"),
-  pdpStars: document.getElementById("pdpStars"),
-  pdpRatingMeta: document.getElementById("pdpRatingMeta"),
   pdpDescription: document.getElementById("pdpDescription"),
   pdpAddToCart: document.getElementById("pdpAddToCart"),
   pdpMsg: document.getElementById("pdpMsg"),
@@ -791,7 +626,6 @@ adminOrderDetail: document.getElementById("adminOrderDetail"),
   pdpNotifyToggle: document.getElementById("pdpNotifyToggle"),
 
   pdpNotifyEmail: document.getElementById("pdpNotifyEmail"),
-  pdpReviewBtn: document.getElementById("pdpReviewBtn"),
 
 
 };
@@ -938,14 +772,9 @@ const canAdd = leftForCart > 0;
 
 
 
-    // ⭐ rating data
-    const r = getAvgRating(p.id);
-    const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
-
     const card = document.createElement("article");
     card.className = "card" + (inStock ? "" : " is-out");
 
-    // ✅ TOUJOURS ouvrable
     card.dataset.pdpOpen = p.id;
 
     const img = p.image
@@ -960,11 +789,6 @@ const canAdd = leftForCart > 0;
 
       <div class="productBody">
         <h3>${escapeHTML(p.name)}</h3>
-
-        <div class="productRating">
-          ${starsHTML(r.avg)}
-          <span class="tiny muted">${avgTxt} · (${r.count})</span>
-        </div>
 
         <div class="productFooter">
           <span class="price">${formatEUR(p.price)}</span>
@@ -1035,12 +859,6 @@ if (els.pdpNotifyToggle) {
     els.pdpImg.alt = p.name;
   }
 
-  // avis visibles direct
-  const r = getAvgRating(p.id);
-  const avgTxt = r.avg ? r.avg.toFixed(1).replace(".", ",") : "0,0";
-  if (els.pdpStars) els.pdpStars.innerHTML = starsHTML(r.avg);
-  if (els.pdpRatingMeta) els.pdpRatingMeta.textContent = `${avgTxt} · ${r.count} avis`;
-
   if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(left > 0);
   if (els.pdpMsg) els.pdpMsg.textContent = "";
 
@@ -1090,7 +908,8 @@ function addToCart(productId, qty = 1) {
     card.classList.add("flash");
   }
 
-  renderCartBadge();
+  
+  ge();
   renderCart();
   renderProducts(); // refresh grisage live
 }
@@ -1565,10 +1384,6 @@ function renderGiftCardPreview() {
 }
 
 function addGiftCardToCart() {
-  if (!ENABLE_GIFTCARDS){
-    console.warn("Gift cards desactivées");
-    return;
-  }
   updateCustomAmountUI();
   const amount = getGiftCardAmount();
 
@@ -1621,100 +1436,6 @@ function resetGiftCardForm() {
 }
 
 /* ==========
-  Reviews modal
-========== */
-
-async function openReviewsView(productId) {
-  const p = getProduct(productId);
-  if (!p || !els.reviewsViewModal) return;
-
-  currentReviewProductId = productId;
-
-  const { avg, count } = getAvgRating(productId);
-  if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
-  if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
-  if (els.reviewsCount) els.reviewsCount.textContent = String(count);
-
-  try {
-    const srv = await apiLoadReviews(productId);
-    reviewsMap[productId] = (srv || []).map(r => ({
-  id: r.id, // ✅ essentiel pour delete
-  name: r.name,
-  rating: r.rating,
-  text: r.text || "",
-  ts: r.created_at ? Date.parse(r.created_at) : Date.now()
-}));
-
-
-    reviewSummary = await apiLoadReviewSummary();
-    saveReviewsMap(reviewsMap);
-  } catch (_) {}
-
-  renderReviewsList(productId);
-
-  els.reviewsViewModal.classList.add("open");
-  els.reviewsViewModal.setAttribute("aria-hidden", "false");
-}
-
-function closeReviewsView() {
-  if (!els.reviewsViewModal) return;
-  els.reviewsViewModal.classList.remove("open");
-  els.reviewsViewModal.setAttribute("aria-hidden", "true");
-}
-
-function openReviewsForm(productId) {
-  const p = getProduct(productId);
-  if (!p || !els.reviewsFormModal) return;
-
-  currentReviewProductId = productId;
-
-  // init étoiles input
-  if (els.reviewRatingInput) {
-  els.reviewRatingInput.value = "0";
-  renderReviewStarsUI(0);
-
-}
-
-
-  if (els.reviewMsg) els.reviewMsg.textContent = "";
-
-  els.reviewsFormModal.classList.add("open");
-  els.reviewsFormModal.setAttribute("aria-hidden", "false");
-}
-
-function closeReviewsForm() {
-  if (!els.reviewsFormModal) return;
-  els.reviewsFormModal.classList.remove("open");
-  els.reviewsFormModal.setAttribute("aria-hidden", "true");
-  if (els.reviewMsg) els.reviewMsg.textContent = "";
-}
-
-
-function renderReviewsList(productId) {
-  if (!els.reviewsList) return;
-  const list = getReviews(productId);
-
-  if (list.length === 0) {
-    els.reviewsList.innerHTML = `<p class="muted">Aucun avis pour le moment. Soyez le premier ⭐</p>`;
-    return;
-  }
-
-  els.reviewsList.innerHTML = list.map(r => {
-    const date = new Date(r.ts || Date.now()).toLocaleDateString("fr-FR");
-    return `
-      <div class="reviewItem">
-        <div class="reviewItem__top">
-          <strong>${escapeHTML(r.name || "Client")}</strong>
-          ${starsHTML(Number(r.rating) || 0)}
-        </div>
-        <p class="tiny muted" style="margin:6px 0 0;">${date}</p>
-        ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
-      </div>
-    `;
-  }).join("");
-}
-
-/* ==========
   Admin (front-only)
 ========== */
 
@@ -1743,8 +1464,7 @@ function loadAdminFields(productId) {
   if (els.adminName) els.adminName.value = p.name;
   if (els.adminPrice) els.adminPrice.value = p.price;
   if (els.adminStock) els.adminStock.value = p.stock;
-  if (els.adminImage) els.adminImage.value = p.image || "";
-  if (els.adminDescription) els.adminDescription.value = p.description ?? p.description ?? "";
+  if (els.adminDescription) els.adminDescription.value = p.description || "";
 
 }
 
@@ -1889,43 +1609,6 @@ if (e.target?.closest?.("[data-admin-order-close]")) {
     return;
   }
 
-// Reviews: close VIEW modal
-if (e.target?.closest?.("[data-reviews-view-close]")) {
-  closeReviewsView();
-  return;
-}
-
-// Reviews: close FORM modal
-if (e.target?.closest?.("[data-reviews-form-close]")) {
-  closeReviewsForm();
-  return;
-}
-
-
-  // Reviews: clickable stars in modal
-  const sp = e.target?.closest?.("[data-star-pick]")?.dataset?.starPick;
-  if (sp) { setReviewRating(Number(sp)); return; }
-
- const delBtn = e.target?.closest?.("[data-admin-review-del-id]");
-if (delBtn) {
-  const reviewId = delBtn.dataset.adminReviewDelId;
-  const productId = els.adminSelect?.value;
-
-  if (!reviewId || !productId) return;
-
-  try {
-    await apiAdminDeleteReview(reviewId);   // ✅ DB delete
-    await renderAdminReviews(productId);    // ✅ refresh list + summary
-    adminReviewsToast("Avis supprimé ✅");
-    renderProducts(); // refresh étoiles boutique
-    if (currentPdpId === productId) openPdp(productId); // refresh pdp si ouverte
-  } catch (err) {
-    adminReviewsToast("❌ " + (err?.message || "Erreur suppression avis"));
-  }
-  return;
-}
-
-
   // Pack type select (Step 1)
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
   if (pt) { selectPackType(pt); return; }
@@ -2020,27 +1703,6 @@ document.getElementById("adminToggleFinished")?.addEventListener("click", async 
   await loadAdminOrders();
 });
 
-// Voir les avis (clic sur "x avis")
-els.pdpRatingMeta?.addEventListener("click", () => {
-  if (!currentPdpId) return;
-  openReviewsView(currentPdpId);
-});
-
-els.pdpRatingMeta?.addEventListener("keydown", (e) => {
-  if (!currentPdpId) return;
-  if (e.key === "Enter" || e.key === " ") {
-    e.preventDefault();
-    openReviewsView(currentPdpId);
-  }
-});
-
-// Laisser un avis
-els.pdpReviewBtn?.addEventListener("click", () => {
-  if (!currentPdpId) return;
-  openReviewsForm(currentPdpId);
-});
-
-
 if (ENABLE_NOTIFY) 
 {
   els.pdpNotifyToggle?.addEventListener("change", async () => {
@@ -2121,31 +1783,6 @@ els.pdpAddToCart?.addEventListener("click", () => {
 });
 
 
-els.pdpStars?.addEventListener("click", () => {
-  if (!currentPdpId) return;
-  openReviewsView(currentPdpId);
-});
-
-
-// ⭐ Rating stars — un seul handler (mobile safe)
-function onStarPick(e) {
-  const btn = e.target?.closest?.("[data-star-pick]");
-  if (!btn) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
-  const value = Number(btn.dataset.starPick || 0);
-  if (!value) return;
-
-  setReviewRating(value);
-}
-
-// Sur iPhone, pointerdown/touchstart est plus fiable que click
-els.reviewStars?.addEventListener("pointerdown", onStarPick, { passive: false });
-els.reviewStars?.addEventListener("click", onStarPick);
-
-
 if (els.cartBtn) els.cartBtn.addEventListener("click", openCart);
 if (els.cartClose) els.cartClose.addEventListener("click", closeCart);
 if (els.cartOverlay) els.cartOverlay.addEventListener("click", closeCart);
@@ -2219,7 +1856,6 @@ if (els.adminSelect) {
   els.adminSelect.addEventListener("change", () => {
     loadAdminFields(els.adminSelect.value);
     if (els.adminSaveMsg) els.adminSaveMsg.textContent = "";
-    renderAdminReviews(els.adminSelect.value);
   });
 }
 
@@ -2252,23 +1888,6 @@ if (els.adminDelete) {
       msg(els.adminSaveMsg, "Produit supprimé ✅");
     } catch (err) {
       msg(els.adminSaveMsg, "❌ " + (err?.message || "Erreur suppression"));
-    }
-  });
-}
-
-
-if (els.adminReviewsClear) {
-  els.adminReviewsClear.addEventListener("click", async () => {
-    if (!els.adminSelect) return;
-    const pid = els.adminSelect.value;
-    if (!pid) return;
-
-    try {
-      await apiAdminClearReviews(pid);
-      await renderAdminReviews(pid);
-      adminReviewsToast("Tous les avis supprimés ✅");
-    } catch (err) {
-      adminReviewsToast("❌ " + (err?.message || "Erreur suppression"));
     }
   });
 }
@@ -2332,8 +1951,7 @@ if (els.addPackBtn) {
 }
 
 /* Gift Card bindings */
-if (ENABLE_GIFTCARDS) {
-  ["input", "change"].forEach(evt => {
+["input", "change"].forEach(evt => {
   els.gcColor?.addEventListener(evt, renderGiftCardPreview);
   els.gcReceiverEmail?.addEventListener(evt, renderGiftCardPreview);
   els.gcSendDate?.addEventListener(evt, renderGiftCardPreview);
@@ -2342,10 +1960,8 @@ if (ENABLE_GIFTCARDS) {
 });
 
 els.gcAmount?.addEventListener("change", () => {
-  if (ENABLE_GIFTCARDS){
   updateCustomAmountUI();
   renderGiftCardPreview();
-  }
   if ((els.gcAmount?.value || "") === "custom") els.gcCustomAmount?.focus();
 });
 
@@ -2353,191 +1969,6 @@ els.gcCustomAmount?.addEventListener("input", renderGiftCardPreview);
 
 if (els.gcAddToCart) els.gcAddToCart.addEventListener("click", addGiftCardToCart);
 if (els.gcReset) els.gcReset.addEventListener("click", resetGiftCardForm);
-}
-
-/* Reviews form submit */
-if (els.reviewForm) {
-  els.reviewForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    if (!currentReviewProductId) return;
-
-    const name = (els.reviewName?.value || "").trim();
-    const rating = getReviewRating();
-    const text = (els.reviewText?.value || "").trim();
-
-    if (!name) { if (els.reviewMsg) els.reviewMsg.textContent = "Nom requis."; return; }
-    if (!rating || rating < 1 || rating > 5) { if (els.reviewMsg) els.reviewMsg.textContent = "Note invalide."; return; }
-
-    try {
-      await apiAddReview(currentReviewProductId, { name, rating, text });
-      const srv = await apiLoadReviews(currentReviewProductId);
-      reviewsMap[currentReviewProductId] = (srv || []).map(r => ({
-        name: r.name,
-        rating: r.rating,
-        text: r.text || "",
-        ts: r.created_at ? Date.parse(r.created_at) : Date.now()
-      }));
-      reviewSummary = await apiLoadReviewSummary();
-      saveReviewsMap(reviewsMap);
-    } catch (_) {
-      addReview(currentReviewProductId, { name, rating, text, ts: Date.now() });
-    }
-
-    if (els.reviewName) els.reviewName.value = "";
-    if (els.reviewText) els.reviewText.value = "";
-    setReviewRating(0);
-
-    if (els.reviewMsg) {
-      els.reviewMsg.textContent = "Avis publié ✅";
-      setTimeout(() => (els.reviewMsg.textContent = ""), 1800);
-    }
-
-    renderReviewsList(currentReviewProductId);
-    const { avg, count } = getAvgRating(currentReviewProductId);
-    if (els.reviewsAvgStars) els.reviewsAvgStars.innerHTML = starsHTML(avg);
-    if (els.reviewsAvgText) els.reviewsAvgText.textContent = (avg || 0).toFixed(1).replace(".", ",");
-    if (els.reviewsCount) els.reviewsCount.textContent = String(count);
-
-    renderProducts();
-
-    // refresh PDP si elle est ouverte sur ce produit
-if (currentPdpId === currentReviewProductId) {
-  openPdp(currentPdpId);
-}
-
-setTimeout(() => {
-  closeReviewsForm();
-  uiToast("Merci pour votre avis ⭐");
-}, 300);
-
-
-
-  });
-}
-
-/* ==========
-  Admin Reviews (delete)
-========== */
-
-function adminReviewsToast(text) {
-  if (!els.adminReviewsMsg) return;
-  els.adminReviewsMsg.textContent = text;
-  clearTimeout(adminReviewsToast._t);
-  adminReviewsToast._t = setTimeout(() => (els.adminReviewsMsg.textContent = ""), 2400);
-}
-
-async function refreshReviewsFromApi(productId) {
-  const srv = await apiLoadReviews(productId);
-
-  reviewsMap[productId] = (srv || []).map(r => ({
-    id: r.id,
-    name: r.name,
-    rating: r.rating,
-    text: r.text || "",
-    ts: r.created_at ? Date.parse(r.created_at) : Date.now()
-  }));
-
-  // summary (avg/count) vient du backend
-  reviewSummary = await apiLoadReviewSummary();
-
-  saveReviewsMap(reviewsMap); // optionnel (cache)
-}
-
-async function renderAdminReviews(productId) {
-  if (!els.adminReviewsList) return;
-
-  // 1) charger depuis DB
-  let list = [];
-  try {
-    list = await apiLoadReviews(productId);
-  } catch (e) {
-    els.adminReviewsList.innerHTML = `<p class="muted">Erreur chargement avis.</p>`;
-    return;
-  }
-
-  // 2) stats
-  const count = list.length;
-  const avg = count ? (list.reduce((a, r) => a + (Number(r.rating) || 0), 0) / count) : 0;
-
-  if (els.adminReviewsCount) els.adminReviewsCount.textContent = String(count);
-  if (els.adminReviewsAvg) els.adminReviewsAvg.textContent = (avg || 0).toFixed(1).replace(".", ",");
-
-  if (count === 0) {
-    els.adminReviewsList.innerHTML = `<p class="muted">Aucun avis pour ce produit.</p>`;
-    return;
-  }
-
-  // 3) render
-  els.adminReviewsList.innerHTML = list.map((r) => {
-    const date = r.created_at ? new Date(r.created_at).toLocaleDateString("fr-FR") : "";
-    return `
-      <div class="reviewItem" style="margin-bottom:10px;">
-        <div class="reviewItem__top">
-          <strong>${escapeHTML(r.name || "Client")}</strong>
-          ${starsHTML(Number(r.rating) || 0)}
-        </div>
-        <p class="tiny muted" style="margin:6px 0 0;">${escapeHTML(date)}</p>
-        ${r.text ? `<p style="margin:10px 0 0;">${escapeHTML(r.text)}</p>` : ""}
-        <div style="margin-top:10px; display:flex; justify-content:flex-end;">
-          <button class="btn btn--ghost" type="button"
-                  data-admin-review-del-id="${escapeHTML(r.id)}"
-                  data-admin-review-pid="${escapeHTML(productId)}">
-            🗑️ Supprimer
-          </button>
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-
-
-async function deleteReview(productId, index) {
-  const list = getReviews(productId);
-  const idx = Number(index);
-  if (!Number.isFinite(idx) || idx < 0 || idx >= list.length) return;
-
-  const review = list[idx];
-  if (!review?.id) return adminReviewsToast("❌ ID avis introuvable");
-
-  try {
-    await apiAdminDeleteReview(review.id);
-
-    // reload depuis DB
-    const srv = await apiLoadReviews(productId);
-    reviewsMap[productId] = (srv || []).map(r => ({
-      id: r.id,
-      name: r.name,
-      rating: r.rating,
-      text: r.text || "",
-      ts: r.created_at ? Date.parse(r.created_at) : Date.now()
-    }));
-    reviewSummary = await apiLoadReviewSummary();
-
-    renderProducts();
-    renderAdminReviews(productId);
-    adminReviewsToast("Avis supprimé ✅");
-  } catch (e) {
-    adminReviewsToast("❌ " + (e?.message || "Erreur suppression DB"));
-  }
-}
-
-
-async function clearAllReviews(productId) {
-  try {
-    await apiAdminClearReviews(productId);
-
-    reviewsMap[productId] = [];
-    reviewSummary = await apiLoadReviewSummary();
-
-    renderProducts();
-    renderAdminReviews(productId);
-    adminReviewsToast("Tous les avis supprimés ✅");
-  } catch (e) {
-    adminReviewsToast("❌ " + (e?.message || "Erreur suppression DB"));
-  }
-}
-
 
 // ---------- Admin Add Product (modal) ----------
 
@@ -2719,6 +2150,323 @@ adminAdd.form?.addEventListener("submit", async (e) => {
 
 
 /* ==========
+  Testimonial form modal
+========== */
+
+let testiRating = 0;
+
+const RATING_LABELS = ["", "Mauvais", "Moyen", "Bien", "Très bien", "Excellent ✨"];
+
+function setTestiRating(n) {
+  testiRating = n;
+  const input = document.getElementById("testiRating");
+  if (input) input.value = String(n);
+  document.querySelectorAll(".testiStarBtn").forEach((btn, i) => {
+    btn.classList.toggle("is-on", i < n);
+  });
+  const hint = document.getElementById("testiRatingHint");
+  if (hint) hint.textContent = n ? RATING_LABELS[n] : "Sélectionnez une note";
+}
+
+function openTestiForm() {
+  const modal = document.getElementById("testiFormModal");
+  if (!modal) return;
+  setTestiRating(0);
+  document.getElementById("testiForm")?.reset();
+  document.getElementById("testiFormMsg") && (document.getElementById("testiFormMsg").textContent = "");
+  document.getElementById("testiFormState") && (document.getElementById("testiFormState").style.display = "");
+  document.getElementById("testiSuccessState") && (document.getElementById("testiSuccessState").style.display = "none");
+  modal.setAttribute("aria-hidden", "false");
+  setTimeout(() => document.getElementById("testiName")?.focus(), 60);
+}
+
+function closeTestiForm() {
+  const modal = document.getElementById("testiFormModal");
+  if (!modal) return;
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function showTestiSuccess() {
+  document.getElementById("testiFormState") && (document.getElementById("testiFormState").style.display = "none");
+  document.getElementById("testiSuccessState") && (document.getElementById("testiSuccessState").style.display = "");
+}
+
+function initTestiFormModal() {
+  document.getElementById("openTestiForm")?.addEventListener("click", openTestiForm);
+  document.getElementById("testiFormClose")?.addEventListener("click", closeTestiForm);
+  document.getElementById("testiFormOverlay")?.addEventListener("click", closeTestiForm);
+  document.getElementById("testiSuccessClose")?.addEventListener("click", closeTestiForm);
+
+  const picker = document.getElementById("testiStarPicker");
+
+  picker?.addEventListener("click", (e) => {
+    const btn = e.target?.closest?.("[data-testi-star]");
+    if (btn) setTestiRating(Number(btn.dataset.testiStar));
+  });
+
+  picker?.addEventListener("mouseover", (e) => {
+    const btn = e.target?.closest?.("[data-testi-star]");
+    if (!btn) return;
+    const n = Number(btn.dataset.testiStar);
+    document.querySelectorAll(".testiStarBtn").forEach((b, i) => b.classList.toggle("is-on", i < n));
+    const hint = document.getElementById("testiRatingHint");
+    if (hint) hint.textContent = RATING_LABELS[n] || "";
+  });
+
+  picker?.addEventListener("mouseleave", () => {
+    document.querySelectorAll(".testiStarBtn").forEach((b, i) => b.classList.toggle("is-on", i < testiRating));
+    const hint = document.getElementById("testiRatingHint");
+    if (hint) hint.textContent = testiRating ? RATING_LABELS[testiRating] : "Sélectionnez une note";
+  });
+
+  document.getElementById("testiForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msgEl  = document.getElementById("testiFormMsg");
+    const submit = document.querySelector(".testiModal__submit");
+    const name   = (document.getElementById("testiName")?.value || "").trim();
+    const body   = (document.getElementById("testiBody")?.value || "").trim();
+    const rating = testiRating;
+
+    if (!name)   { if (msgEl) msgEl.textContent = "Le prénom est requis.";      return; }
+    if (!rating) { if (msgEl) msgEl.textContent = "Choisissez une note.";       return; }
+    if (!body)   { if (msgEl) msgEl.textContent = "Rédigez votre avis s'il vous plaît."; return; }
+
+    if (msgEl)  msgEl.textContent = "";
+    if (submit) { submit.disabled = true; submit.textContent = "Envoi en cours…"; }
+
+    const now = new Date();
+    const dl  = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+    const dateLabel = dl.charAt(0).toUpperCase() + dl.slice(1);
+
+    try {
+      await apiFetch("/api/testimonials", {
+        method: "POST",
+        body: JSON.stringify({ name, rating, body, date_label: dateLabel }),
+      });
+      showTestiSuccess();
+    } catch (err) {
+      if (msgEl)  msgEl.textContent = "❌ " + (err?.message || "Erreur. Réessayez.");
+      if (submit) { submit.disabled = false; submit.textContent = "Publier mon avis"; }
+    }
+  });
+}
+
+/* ==========
+  Admin — testimonials en attente
+========== */
+
+async function loadAdminPendingTestimonials() {
+  const listEl = document.getElementById("adminTestiList");
+  const msgEl  = document.getElementById("adminTestiMsg");
+  if (!listEl) return;
+
+  if (msgEl) msgEl.textContent = "Chargement…";
+  listEl.innerHTML = "";
+
+  try {
+    const adminKey = getAdminKey();
+    const data = await apiFetch("/api/admin/testimonials/pending", {
+      headers: { "x-admin-key": adminKey },
+    });
+
+    const list = data?.testimonials || [];
+    if (msgEl) msgEl.textContent = list.length ? `${list.length} avis en attente` : "Aucun avis en attente.";
+
+    const badge = document.getElementById("dashAvisBadge");
+    if (badge) {
+      if (list.length > 0) { badge.textContent = String(list.length); badge.style.display = ""; }
+      else { badge.style.display = "none"; }
+    }
+
+    listEl.innerHTML = list.map(t => {
+      const stars = "★".repeat(t.rating) + "☆".repeat(5 - t.rating);
+      const date  = t.created_at ? new Date(t.created_at).toLocaleDateString("fr-FR") : "";
+      return `
+        <div class="testiAdminCard" id="testi-${escapeHTML(t.id)}">
+          <div class="testiAdminCard__head">
+            <div>
+              <strong>${escapeHTML(t.name)}</strong>
+              <span class="tiny muted" style="margin-left:8px;">${date}</span>
+            </div>
+            <span style="color:var(--brand3); font-size:1rem;">${stars}</span>
+          </div>
+          <p class="testiAdminCard__body">"${escapeHTML(t.body)}"</p>
+          <div class="testiAdminCard__actions">
+            <button class="btn btn--primary" type="button"
+                    data-testi-approve="${escapeHTML(t.id)}">✓ Approuver</button>
+            <button class="btn btn--danger"  type="button"
+                    data-testi-delete="${escapeHTML(t.id)}">✕ Supprimer</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch (err) {
+    if (msgEl) msgEl.textContent = "❌ " + (err?.message || "Erreur");
+  }
+}
+
+document.addEventListener("click", async (e) => {
+  const approveId = e.target?.closest?.("[data-testi-approve]")?.dataset?.testiApprove;
+  if (approveId) {
+    try {
+      await apiFetch(`/api/admin/testimonials/${encodeURIComponent(approveId)}/approve`, {
+        method: "PATCH",
+        headers: { "x-admin-key": getAdminKey() },
+      });
+      document.getElementById(`testi-${approveId}`)?.remove();
+      uiToast("Avis approuvé ✅");
+      const msg = document.getElementById("adminTestiMsg");
+      const remaining = document.querySelectorAll(".testiAdminCard").length;
+      if (msg) msg.textContent = remaining ? `${remaining} avis en attente` : "Aucun avis en attente.";
+    } catch (err) { uiToast("❌ " + (err?.message || "Erreur")); }
+    return;
+  }
+
+  const deleteId = e.target?.closest?.("[data-testi-delete]")?.dataset?.testiDelete;
+  if (deleteId) {
+    try {
+      await apiFetch(`/api/admin/testimonials/${encodeURIComponent(deleteId)}`, {
+        method: "DELETE",
+        headers: { "x-admin-key": getAdminKey() },
+      });
+      document.getElementById(`testi-${deleteId}`)?.remove();
+      uiToast("Avis supprimé.");
+      const msg = document.getElementById("adminTestiMsg");
+      const remaining = document.querySelectorAll(".testiAdminCard").length;
+      if (msg) msg.textContent = remaining ? `${remaining} avis en attente` : "Aucun avis en attente.";
+    } catch (err) { uiToast("❌ " + (err?.message || "Erreur")); }
+    return;
+  }
+});
+
+window.loadAdminPendingTestimonials = loadAdminPendingTestimonials;
+
+/* ==========
+  Testimonials carousel
+========== */
+
+const TESTIMONIALS_FALLBACK = [
+  { name: "Sofia M.",   rating: 5, body: "La bougie Santal est absolument divine — ça sent le luxe à prix accessible. Je recommande les yeux fermés !", date_label: "Avril 2025" },
+  { name: "Lucas R.",   rating: 5, body: "J'ai offert le Pack 3 à ma femme pour son anniversaire, elle a adoré. La présentation est super soignée.", date_label: "Mars 2025" },
+  { name: "Emma D.",    rating: 5, body: "La bougie Vanille est tellement cocooning ! Elle dure longtemps et la maison sent trop bon. J'en ai commandé 3.", date_label: "Avril 2025" },
+  { name: "Thomas B.",  rating: 4, body: "Livraison rapide, produits de qualité. La bougie Ambre est devenue mon coup de cœur. Le pack 5 est une vraie bonne affaire.", date_label: "Mars 2025" },
+  { name: "Chloé L.",   rating: 5, body: "Ça fait 3 commandes chez Maison Cire, jamais déçue. La carte cadeau est super pratique pour les cadeaux de dernière minute.", date_label: "Février 2025" },
+  { name: "Nathan V.",  rating: 5, body: "Qualité premium, parfums qui durent vraiment longtemps. La bougie Coton est parfaite pour le bureau, subtile et fraîche.", date_label: "Janvier 2025" },
+  { name: "Inès K.",    rating: 5, body: "Packaging soigné, odeurs incroyables. La Bougie Figue est une révélation. Je reviendrai sans hésiter.", date_label: "Mars 2025" },
+  { name: "Romain T.",  rating: 5, body: "Très belle découverte ! Le pack 3 est un excellent rapport qualité-prix. Les bougies brûlent proprement et l'odeur tient bien.", date_label: "Février 2025" },
+];
+
+function initTestimonials() {
+  const track    = document.getElementById("testiTrack");
+  const viewport = document.getElementById("testiViewport");
+  const dotsEl   = document.getElementById("testiDots");
+  if (!track || !viewport) return;
+
+  const GAP = 24;
+  let current = 0;
+  let timer;
+  let ITEMS = TESTIMONIALS_FALLBACK;
+
+  function perView() {
+    return window.innerWidth >= 900 ? 3 : window.innerWidth >= 580 ? 2 : 1;
+  }
+
+  function maxIdx() {
+    return Math.max(0, ITEMS.length - perView());
+  }
+
+  function stars(n) {
+    const s = Math.max(0, Math.min(5, n));
+    return "★".repeat(s) + "☆".repeat(5 - s);
+  }
+
+  function render() {
+    track.innerHTML = ITEMS.map(t => `
+      <div class="testiCard">
+        <div class="testiCard__stars">${stars(t.rating)}</div>
+        <p class="testiCard__text">"${escapeHTML(t.body)}"</p>
+        <div class="testiCard__foot">
+          <strong class="testiCard__name">${escapeHTML(t.name)}</strong>
+          <span class="testiCard__date">${escapeHTML(t.date_label || "")}</span>
+        </div>
+      </div>
+    `).join("");
+
+    const n = perView();
+    const w = (viewport.offsetWidth - (n - 1) * GAP) / n;
+    track.querySelectorAll(".testiCard").forEach(c => { c.style.width = w + "px"; });
+  }
+
+  function updateScoreBlock(items) {
+    if (!items.length) return;
+    const avg   = items.reduce((s, t) => s + (Number(t.rating) || 0), 0) / items.length;
+    const count = items.length;
+    const full  = Math.round(avg);
+    const stars = "★".repeat(Math.min(5, full)) + "☆".repeat(Math.max(0, 5 - full));
+
+    const numEl   = document.getElementById("testiAvgNum");
+    const starsEl = document.getElementById("testiAvgStars");
+    const lblEl   = document.getElementById("testiAvgLabel");
+    if (numEl)   numEl.textContent   = avg.toFixed(1).replace(".", ",");
+    if (starsEl) starsEl.textContent = stars;
+    if (lblEl)   lblEl.textContent   = `${count} avis vérifiés`;
+  }
+
+  async function loadFromApi() {
+    try {
+      const data = await apiFetch("/api/testimonials");
+      if (Array.isArray(data?.testimonials) && data.testimonials.length) {
+        ITEMS = data.testimonials;
+        render();
+        buildDots();
+        goTo(0);
+        updateScoreBlock(ITEMS);
+      }
+    } catch (_) {}
+  }
+
+  function buildDots() {
+    if (!dotsEl) return;
+    dotsEl.innerHTML = Array.from({ length: maxIdx() + 1 })
+      .map((_, i) => `<button class="testiDot${i === current ? " is-on" : ""}" data-testi-dot="${i}" aria-label="Avis ${i + 1}"></button>`)
+      .join("");
+  }
+
+  function goTo(idx) {
+    current = Math.max(0, Math.min(idx, maxIdx()));
+    const card = track.querySelector(".testiCard");
+    if (!card) return;
+    track.style.transform = `translateX(-${current * (card.offsetWidth + GAP)}px)`;
+    dotsEl?.querySelectorAll(".testiDot").forEach((d, i) => d.classList.toggle("is-on", i === current));
+  }
+
+  function next() { goTo(current >= maxIdx() ? 0 : current + 1); }
+  function prev() { goTo(current <= 0 ? maxIdx() : current - 1); }
+  function startAuto() { stopAuto(); timer = setInterval(next, 5000); }
+  function stopAuto()  { clearInterval(timer); }
+
+  render();
+  buildDots();
+  goTo(0);
+  startAuto();
+  loadFromApi();
+
+  document.getElementById("testiPrev")?.addEventListener("click", () => { stopAuto(); prev(); startAuto(); });
+  document.getElementById("testiNext")?.addEventListener("click", () => { stopAuto(); next(); startAuto(); });
+  dotsEl?.addEventListener("click", e => {
+    const d = e.target?.closest?.("[data-testi-dot]");
+    if (d) { stopAuto(); goTo(Number(d.dataset.testiDot)); startAuto(); }
+  });
+
+  let rTimer;
+  window.addEventListener("resize", () => {
+    clearTimeout(rTimer);
+    rTimer = setTimeout(() => { render(); buildDots(); goTo(0); }, 200);
+  });
+}
+
+/* ==========
   Init
 ========== */
 
@@ -2726,10 +2474,9 @@ async function init() {
   // 1) session panier côté backend
   try { await ensureSessionId(); } catch (_) {}
 
-  // 2) charge produits + reviews depuis backend
+  // 2) charge produits depuis backend
   try {
     products = await apiLoadProducts();
-    reviewSummary = await apiLoadReviewSummary();
     saveProducts(products); // optionnel (cache)
   } catch (e) {
     // fallback si backend down
@@ -2759,13 +2506,9 @@ async function init() {
   updatePackChosenUI();
   updateCustomAmountUI();
   renderGiftCardPreview();
+  initTestimonials();
+  initTestiFormModal();
 }
-
-
-  if (els.reviewStars) {
-    if (els.reviewRatingInput && !els.reviewRatingInput.value) els.reviewRatingInput.value = "0";
-    renderReviewStarsUI(getReviewRating() || 5);
-  }
 
 init();
 

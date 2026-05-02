@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-Content \"c:\\\\Users\\\\Joseph\\\\Desktop\\\\candle-shop-backend-supabase-fixed\\\\candle-shop\\\\styles.css\")",
+      "Bash(Measure-Object -Line)"
+    ]
+  }
+}
