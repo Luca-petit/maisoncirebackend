@@ -1,29 +1,21 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const host = process.env.SMTP_HOST;
-const port = Number(process.env.SMTP_PORT || 587);
-const secure = String(process.env.SMTP_SECURE || "false") === "true";
-const user = process.env.SMTP_USER;
-const pass = process.env.SMTP_PASS;
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const from = process.env.MAIL_FROM || "Maison Cire <no-reply@maisoncire>";
-
-const transporter = nodemailer.createTransport({
-  host,
-  port,
-  secure,
-  auth: user && pass ? { user, pass } : undefined,
-});
+const FROM = process.env.MAIL_FROM || "Maison Cire <onboarding@resend.dev>";
 
 export async function sendMail({ to, subject, html, text }) {
-  if (!to) throw new Error("sendMail: 'to' manquant");
+  if (!to)      throw new Error("sendMail: 'to' manquant");
   if (!subject) throw new Error("sendMail: 'subject' manquant");
 
-  return transporter.sendMail({
-    from,
-    to,
+  const { data, error } = await resend.emails.send({
+    from:    FROM,
+    to:      Array.isArray(to) ? to : [to],
     subject,
-    text: text || undefined,
-    html: html || undefined,
+    html:    html    || undefined,
+    text:    text    || undefined,
   });
+
+  if (error) throw new Error(error.message || "Resend error");
+  return data;
 }
