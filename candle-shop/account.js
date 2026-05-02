@@ -57,10 +57,19 @@
     document.querySelectorAll(".reveal").forEach(el => el.classList.add("is-in"));
   }
 
+  const elForgotForm          = document.getElementById("forgotForm");
+  const elForgotEmail         = document.getElementById("forgotEmail");
+  const elForgotMsg           = document.getElementById("forgotMsg");
+  const elResetForm           = document.getElementById("resetForm");
+  const elResetPassword       = document.getElementById("resetPassword");
+  const elResetPasswordConfirm= document.getElementById("resetPasswordConfirm");
+  const elResetMsg            = document.getElementById("resetMsg");
+
   function showTab(which) {
-    const isLogin = which === "login";
-    if (elLoginForm)  elLoginForm.style.display  = isLogin ? "" : "none";
-    if (elSignupForm) elSignupForm.style.display = isLogin ? "none" : "";
+    const forms = { login: elLoginForm, signup: elSignupForm, forgot: elForgotForm, reset: elResetForm };
+    Object.entries(forms).forEach(([key, el]) => {
+      if (el) el.style.display = key === which ? "" : "none";
+    });
     clearMsgs();
   }
 
@@ -311,6 +320,8 @@
   // ── Auth events ──────────────────────────────────────────
   document.getElementById("switchToSignup")?.addEventListener("click", e => { e.preventDefault(); showTab("signup"); });
   document.getElementById("switchToLogin") ?.addEventListener("click", e => { e.preventDefault(); showTab("login");  });
+  document.getElementById("switchToForgot")?.addEventListener("click", e => { e.preventDefault(); showTab("forgot"); });
+  document.getElementById("backToLogin")   ?.addEventListener("click", e => { e.preventDefault(); showTab("login");  });
 
   // Login
   elLoginForm?.addEventListener("submit", async (e) => {
@@ -381,6 +392,56 @@
     }
   });
 
+  // Mot de passe oublié
+  elForgotForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = (elForgotEmail?.value || "").trim().toLowerCase();
+    if (!email.includes("@")) return setMsg(elForgotMsg, "Email invalide.");
+
+    const btn = elForgotForm.querySelector("button[type=submit]");
+    if (btn) { btn.disabled = true; btn.textContent = "Envoi…"; }
+
+    try {
+      const { error } = await supa.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/account.html",
+      });
+      if (error) throw new Error(error.message);
+      setMsg(elForgotMsg, "✅ Email envoyé ! Vérifiez votre boîte mail.");
+      if (btn) { btn.disabled = false; btn.textContent = "Envoyer le lien"; }
+    } catch (err) {
+      setMsg(elForgotMsg, "❌ " + (err?.message || "Erreur envoi"));
+      if (btn) { btn.disabled = false; btn.textContent = "Envoyer le lien"; }
+    }
+  });
+
+  // Nouveau mot de passe (après clic sur le lien dans l'email)
+  elResetForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const pwd     = (elResetPassword?.value         || "").trim();
+    const confirm = (elResetPasswordConfirm?.value  || "").trim();
+
+    if (pwd.length < 6)    return setMsg(elResetMsg, "Mot de passe trop court (min 6 caractères).");
+    if (pwd !== confirm)   return setMsg(elResetMsg, "Les mots de passe ne correspondent pas.");
+
+    const btn = elResetForm.querySelector("button[type=submit]");
+    if (btn) { btn.disabled = true; btn.textContent = "Mise à jour…"; }
+
+    try {
+      const { error } = await supa.auth.updateUser({ password: pwd });
+      if (error) throw new Error(error.message);
+
+      setMsg(elResetMsg, "✅ Mot de passe mis à jour !");
+      setTimeout(() => {
+        showTab("login");
+        if (elResetPassword)        elResetPassword.value = "";
+        if (elResetPasswordConfirm) elResetPasswordConfirm.value = "";
+      }, 1800);
+    } catch (err) {
+      setMsg(elResetMsg, "❌ " + (err?.message || "Erreur mise à jour"));
+      if (btn) { btn.disabled = false; btn.textContent = "Mettre à jour"; }
+    }
+  });
+
   // Logout
   elLogoutBtn?.addEventListener("click", async () => {
     await supa.auth.signOut().catch(() => {});
@@ -431,6 +492,13 @@
 
   // Sync si la session change (ex: expiration, autre onglet)
   supa.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      // L'utilisateur vient de cliquer sur le lien de reset → afficher le formulaire
+      if (elAuthBox)  elAuthBox.style.display  = "";
+      if (elAccountBox) elAccountBox.style.display = "none";
+      showTab("reset");
+      return;
+    }
     if (event === "SIGNED_OUT" || !session) {
       clearAuth();
       showAnonymous();

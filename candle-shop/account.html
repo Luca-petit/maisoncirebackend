@@ -54,10 +54,54 @@
           <button class="btn btn--primary w100" type="submit">Se connecter</button>
           <p class="formMsg" id="loginMsg"></p>
 
+          <p class="authSwitch" style="margin-top:10px;">
+            <a href="#" id="switchToForgot" style="color:var(--muted);font-size:12px;">Mot de passe oublié ?</a>
+          </p>
           <p class="authSwitch">
             Pas encore de compte ?
             <a href="#" id="switchToSignup">Inscrivez-vous</a>
           </p>
+        </form>
+
+        <!-- Mot de passe oublié -->
+        <form id="forgotForm" class="authForm" style="display:none;">
+          <h3 class="authForm__title">Mot de passe oublié</h3>
+          <p style="margin:0 0 16px;font-size:13px;color:var(--muted);line-height:1.6;">
+            Entrez votre email — vous recevrez un lien pour créer un nouveau mot de passe.
+          </p>
+
+          <label class="label">
+            Email
+            <input class="input" type="email" id="forgotEmail"
+              placeholder="email@exemple.com" autocomplete="email" required />
+          </label>
+
+          <button class="btn btn--primary w100" type="submit">Envoyer le lien</button>
+          <p class="formMsg" id="forgotMsg"></p>
+
+          <p class="authSwitch">
+            <a href="#" id="backToLogin">← Retour à la connexion</a>
+          </p>
+        </form>
+
+        <!-- Nouveau mot de passe (déclenché par le lien Supabase) -->
+        <form id="resetForm" class="authForm" style="display:none;">
+          <h3 class="authForm__title">Nouveau mot de passe</h3>
+
+          <label class="label">
+            Nouveau mot de passe
+            <input class="input" type="password" id="resetPassword"
+              placeholder="Min. 6 caractères" autocomplete="new-password" required />
+          </label>
+
+          <label class="label">
+            Confirmer
+            <input class="input" type="password" id="resetPasswordConfirm"
+              placeholder="Retapez votre mot de passe" autocomplete="new-password" required />
+          </label>
+
+          <button class="btn btn--primary w100" type="submit">Mettre à jour</button>
+          <p class="formMsg" id="resetMsg"></p>
         </form>
 
         <form id="signupForm" class="authForm" style="display:none;">
