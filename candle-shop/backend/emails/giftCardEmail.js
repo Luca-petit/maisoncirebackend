@@ -1,4 +1,4 @@
-export function giftCardEmail({ code, amount, fromName, message, recipientEmail, color = "ambre", shopUrl = "https://backendmaisoncire.onrender.com" }) {
+export function giftCardEmail({ code, amount, fromName, message, recipientEmail, color = "ambre", shopUrl = "https://maisoncirebackend.onrender.com/index.html" }) {
 
   const solids = {
     violet: "#7c3aed",
