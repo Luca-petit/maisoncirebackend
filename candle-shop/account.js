@@ -460,7 +460,7 @@
   // ── Dashboard tabs ────────────────────────────────────────
   function initDashTabs() {
     const tabs   = document.querySelectorAll("[data-dash-tab]");
-    const panels = { produits: "dashProduits", commandes: "dashCommandes", avis: "dashAvis" };
+    const panels = { produits: "dashProduits", commandes: "dashCommandes", avis: "dashAvis", clients: "dashClients" };
 
     tabs.forEach(btn => {
       btn.addEventListener("click", () => {
@@ -478,6 +478,11 @@
   // ── Init ─────────────────────────────────────────────────
   ensureRevealVisible();
   initDashTabs();
+
+  document.getElementById("clientSearchBtn")?.addEventListener("click", () => window.searchClient?.());
+  document.getElementById("clientSearchInput")?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") window.searchClient?.();
+  });
 
   // Détecter un lien de reset dans l'URL AVANT tout chargement de session
   function isRecoveryUrl() {

@@ -1254,6 +1254,46 @@ main, .main { padding-bottom: 40px; }
 }
 
 /* =============================================
+   Admin — client search results
+============================================= */
+.clientProfile {
+  padding: 14px 16px;
+  border-radius: var(--r);
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  margin-bottom: 16px;
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+}
+.clientProfile__avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--grad);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 800; font-size: 16px; flex-shrink: 0;
+}
+.clientGcCard {
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 16px 18px; margin-bottom: 10px;
+  transition: box-shadow var(--speed) var(--ease);
+}
+.clientGcCard:hover { box-shadow: var(--shadow-xs); }
+.clientGcCard__head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px; margin-bottom: 8px;
+}
+.clientGcCard__code {
+  font-family: monospace; font-size: 14px; font-weight: 800;
+  letter-spacing: .06em; color: var(--text);
+}
+.clientGcCard__balance {
+  font-size: 16px; font-weight: 800;
+  background: var(--grad);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.clientGcCard__deduct {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px;
+}
+
+/* =============================================
    Admin — other
 ============================================= */
 .adminActions { margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }

@@ -905,7 +905,7 @@ if (els.pdpNotifyToggle) {
     els.pdpImg.alt = p.name;
   }
 
-  if (els.pdpAddToCart) els.pdpAddToCart.disabled = !(left > 0);
+  if (els.pdpAddToCart) els.pdpAddToCart.disabled = false;
   if (els.pdpMsg) els.pdpMsg.textContent = "";
 
   els.pdpModal.classList.add("open");
@@ -1814,11 +1814,23 @@ els.pdpNotifyEmail?.addEventListener("input", () => {
 els.pdpClose?.addEventListener("click", closePdp);
 els.pdpOverlay?.addEventListener("click", closePdp);
 
-// PDP add to cart
+// PDP add to cart — même logique que les gift cards : push direct, pas d'early exit
 els.pdpAddToCart?.addEventListener("click", () => {
   if (!currentPdpId) return;
-  addToCart(currentPdpId, 1);
-  bumpCartIcon();
+
+  // Ajout direct dans cart.skus (comme cart.giftcards.push pour les GC)
+  cart.skus[currentPdpId] = (cart.skus[currentPdpId] || 0) + 1;
+
+  saveCart(cart);
+  renderCartBadge();
+  renderCart();
+
+  if (els.cartBtn) {
+    els.cartBtn.classList.remove("bump");
+    void els.cartBtn.offsetWidth;
+    els.cartBtn.classList.add("bump");
+  }
+
   uiToast("Ajouté au panier ✓", "success");
   closePdp();
 });
@@ -2382,6 +2394,141 @@ document.addEventListener("click", async (e) => {
 });
 
 window.loadAdminPendingTestimonials = loadAdminPendingTestimonials;
+
+/* ==========
+  Admin — recherche client
+========== */
+
+async function searchClient() {
+  const input  = document.getElementById("clientSearchInput");
+  const msgEl  = document.getElementById("clientSearchMsg");
+  const result = document.getElementById("clientResult");
+  const q = (input?.value || "").trim();
+
+  if (!q || q.length < 3) { setFormMsg(msgEl, "Entrez au moins 3 caractères.", "error"); return; }
+
+  setFormMsg(msgEl, "Recherche…");
+  if (result) result.innerHTML = "";
+
+  try {
+    const data = await apiFetch(`/api/admin/clients/search?q=${encodeURIComponent(q)}`, {
+      headers: { "x-admin-key": getAdminKey() }
+    });
+
+    const profiles   = data?.profiles   || [];
+    const giftCards  = data?.gift_cards  || [];
+
+    if (!profiles.length && !giftCards.length) {
+      setFormMsg(msgEl, "Aucun résultat.", "info");
+      return;
+    }
+
+    setFormMsg(msgEl, `${profiles.length} compte(s) · ${giftCards.length} carte(s) cadeau`, "success");
+
+    let html = "";
+
+    // Profils inscrits
+    if (profiles.length) {
+      html += profiles.map(p => {
+        const initial = (p.email || "?")[0].toUpperCase();
+        const since   = p.created_at ? new Date(p.created_at).toLocaleDateString("fr-FR") : "—";
+        return `
+          <div class="clientProfile">
+            <div class="clientProfile__avatar">${escapeHTML(initial)}</div>
+            <div style="flex:1;">
+              <strong style="font-size:14px;">${escapeHTML(p.email)}</strong>
+              <div class="tiny muted">Inscrit le ${since} · rôle : ${escapeHTML(p.role || "user")}</div>
+            </div>
+          </div>`;
+      }).join("");
+    }
+
+    // Cartes cadeaux
+    if (giftCards.length) {
+      html += `<h4 style="margin:16px 0 10px;font-size:14px;font-weight:700;">Cartes cadeaux (${giftCards.length})</h4>`;
+      html += giftCards.map(gc => {
+        const statusColor = gc.is_active ? "var(--brand2)" : "var(--muted)";
+        const status      = gc.is_active ? "Active" : "Épuisée";
+        const sent        = gc.sent_at ? "Envoyée" : (gc.payment_confirmed ? "En attente de la date" : "En attente du paiement");
+        return `
+          <div class="clientGcCard">
+            <div class="clientGcCard__head">
+              <div>
+                <span class="clientGcCard__code">${escapeHTML(gc.code)}</span>
+                <span class="tiny muted" style="margin-left:8px;">${escapeHTML(gc.color || "")}</span>
+              </div>
+              <span class="clientGcCard__balance">${formatEUR(gc.balance)} / ${formatEUR(gc.initial_amount)}</span>
+            </div>
+            <div class="tiny muted" style="line-height:1.7;">
+              Destinataire : ${escapeHTML(gc.recipient_email)}<br>
+              Expéditeur : ${escapeHTML(gc.sender_email)}<br>
+              Statut envoi : ${sent} · <span style="color:${statusColor};font-weight:700;">${status}</span>
+            </div>
+            ${gc.is_active && gc.balance > 0 ? `
+              <div class="clientGcCard__deduct">
+                <input class="input" type="number" min="0.01" max="${gc.balance}" step="0.01"
+                  id="deduct_amount_${escapeHTML(gc.id)}"
+                  placeholder="Montant à déduire (max ${formatEUR(gc.balance)})"
+                  style="max-width:260px;" />
+                <input class="input" type="text"
+                  id="deduct_reason_${escapeHTML(gc.id)}"
+                  placeholder="Motif (optionnel)"
+                  style="max-width:200px;" />
+                <button class="btn btn--danger" type="button"
+                  data-admin-gc-deduct="${escapeHTML(gc.id)}">
+                  Déduire
+                </button>
+                <span class="tiny muted" id="deduct_msg_${escapeHTML(gc.id)}"></span>
+              </div>` : ""}
+          </div>`;
+      }).join("");
+    }
+
+    if (result) result.innerHTML = html;
+
+  } catch (err) {
+    setFormMsg(msgEl, "❌ " + (err?.message || "Erreur recherche"), "error");
+  }
+}
+
+// Handler déduction
+document.addEventListener("click", async (e) => {
+  const gcId = e.target?.closest?.("[data-admin-gc-deduct]")?.dataset?.adminGcDeduct;
+  if (!gcId) return;
+
+  const amountInput = document.getElementById(`deduct_amount_${gcId}`);
+  const reasonInput = document.getElementById(`deduct_reason_${gcId}`);
+  const msgEl       = document.getElementById(`deduct_msg_${gcId}`);
+  const btn         = e.target?.closest?.("[data-admin-gc-deduct]");
+
+  const amount = Number(amountInput?.value || 0);
+  const reason = (reasonInput?.value || "").trim();
+
+  if (!amount || amount <= 0) { if (msgEl) setFormMsg(msgEl, "Montant invalide.", "error"); return; }
+
+  btnLoading(btn, true);
+  if (msgEl) setFormMsg(msgEl, "");
+
+  try {
+    const data = await apiFetch(`/api/admin/gift-cards/${encodeURIComponent(gcId)}/deduct`, {
+      method: "PATCH",
+      headers: { "x-admin-key": getAdminKey() },
+      body: JSON.stringify({ amount, reason }),
+    });
+
+    if (msgEl) setFormMsg(msgEl, `✓ Nouveau solde : ${formatEUR(data.new_balance)}`, "success");
+    if (amountInput) amountInput.value = "";
+    uiToast(`Déduit ${formatEUR(amount)} ✓`, "success");
+
+    // Refresh the search to show updated balance
+    setTimeout(() => searchClient(), 600);
+  } catch (err) {
+    if (msgEl) setFormMsg(msgEl, "❌ " + (err?.message || "Erreur"), "error");
+    btnLoading(btn, false, "Déduire");
+  }
+});
+
+window.searchClient = searchClient;
 
 /* ==========
   Testimonials carousel

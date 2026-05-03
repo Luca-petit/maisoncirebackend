@@ -1299,6 +1299,68 @@ app.get("/api/admin/gift-cards", requireAdmin, async (req, res) => {
   }
 });
 
+// Admin — rechercher un client par email + ses cartes cadeaux
+app.get("/api/admin/clients/search", requireAdmin, async (req, res) => {
+  try {
+    const q = normalizeEmail(req.query?.q || "");
+    if (!q || q.length < 3) return bad(res, 400, "Email trop court (min 3 car.)");
+
+    // Profil Supabase Auth (si inscrit)
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("id, email, role, created_at")
+      .ilike("email", `%${q}%`)
+      .limit(10);
+
+    // Cartes cadeaux reçues ou envoyées
+    const { data: gcData } = await supabase
+      .from("gift_cards")
+      .select("id,code,initial_amount,balance,color,recipient_email,sender_email,send_date,sent_at,payment_confirmed,is_active,created_at")
+      .or(`recipient_email.ilike.%${q}%,sender_email.ilike.%${q}%`)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    return ok(res, {
+      profiles:    profilesData || [],
+      gift_cards:  gcData       || [],
+    });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur recherche client");
+  }
+});
+
+// Admin — déduire un montant d'une carte cadeau
+app.patch("/api/admin/gift-cards/:id/deduct", requireAdmin, async (req, res) => {
+  try {
+    const id     = String(req.params.id || "").trim();
+    const amount = Number(req.body?.amount || 0);
+    const reason = String(req.body?.reason || "Déduction manuelle admin").trim();
+
+    if (!id)              return bad(res, 400, "id manquant");
+    if (amount <= 0)      return bad(res, 400, "Montant invalide (doit être > 0)");
+
+    const { data: gc, error } = await supabase
+      .from("gift_cards")
+      .select("id,code,balance,is_active")
+      .eq("id", id)
+      .single();
+    if (error || !gc)     return bad(res, 404, "Carte introuvable");
+    if (!gc.is_active)    return bad(res, 400, "Carte déjà épuisée");
+    if (amount > gc.balance) return bad(res, 400, `Montant supérieur au solde (${gc.balance} €)`);
+
+    const newBalance = Math.round((gc.balance - amount) * 100) / 100;
+    await supabase
+      .from("gift_cards")
+      .update({ balance: newBalance, is_active: newBalance > 0 })
+      .eq("id", id);
+
+    console.log(`💳 Admin deduct: ${gc.code} — ${amount}€ (${reason}) → solde: ${newBalance}€`);
+    return ok(res, { ok: true, new_balance: newBalance });
+  } catch (e) {
+    return bad(res, 500, e?.message || "Erreur déduction");
+  }
+});
+
 // Admin — désactiver une carte
 app.delete("/api/admin/gift-cards/:id", requireAdmin, async (req, res) => {
   try {

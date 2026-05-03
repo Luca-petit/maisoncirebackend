@@ -206,6 +206,9 @@
           <button class="dashTab__btn" data-dash-tab="avis" type="button">
             <span>⭐</span> Avis <span class="dashTab__badge" id="dashAvisBadge" style="display:none;"></span>
           </button>
+          <button class="dashTab__btn" data-dash-tab="clients" type="button">
+            <span>👥</span> Clients
+          </button>
         </nav>
 
         <!-- ── Tab Produits ──────────────────────── -->
@@ -287,6 +290,30 @@
             <div id="adminTestiList"></div>
           </div>
 
+        </div>
+
+        <!-- ── Tab Clients ─────────────────────────── -->
+        <div class="dashPanel hidden" id="dashClients">
+          <div class="dashCard">
+            <div class="dashCard__head">
+              <div>
+                <h3 class="dashCard__title">Rechercher un client</h3>
+                <p class="tiny muted">Recherche par email — affiche le compte et les cartes cadeaux.</p>
+              </div>
+            </div>
+
+            <div style="padding:20px 24px 12px;">
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <input class="input" id="clientSearchInput" type="email"
+                  placeholder="email@exemple.com" autocomplete="off"
+                  style="flex:1;min-width:220px;" />
+                <button class="btn btn--primary" id="clientSearchBtn" type="button">Rechercher</button>
+              </div>
+              <p class="formMsg" id="clientSearchMsg" style="margin-top:8px;"></p>
+            </div>
+
+            <div id="clientResult" style="padding:0 24px 20px;"></div>
+          </div>
         </div>
 
       </div><!-- /adminPanel -->
