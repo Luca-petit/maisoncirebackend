@@ -449,7 +449,7 @@ function loadCart() {
   }
 }
 
-function saveCart(cart) {
+async function saveCart(cart) {
   localStorage.setItem(CART_KEY, JSON.stringify(cart));
 
   const sid = getSessionId();
@@ -1797,11 +1797,11 @@ els.pdpAddToCart?.addEventListener("click", () => {
   if (!currentPdpId) return;
 
   addToCart(currentPdpId, 1);
-
   bumpCartIcon();
-  uiToast("Ajouté au panier ✓", "success");
-  setFormMsg(els.pdpMsg, "Ajouté ✓", "success");
-  setTimeout(closePdp, 700);
+
+  // Fermer le PDP et ouvrir le panier directement
+  closePdp();
+  setTimeout(openCart, 120);
 });
 
 
