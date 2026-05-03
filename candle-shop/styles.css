@@ -515,16 +515,70 @@ main, .main { padding-bottom: 40px; }
 
 /* ---------- Toast ---------- */
 .toast {
-  position: fixed; bottom: 24px; left: 50%;
-  transform: translateX(-50%) translateY(14px);
+  position: fixed; bottom: 28px; left: 50%;
+  transform: translateX(-50%) translateY(16px);
+  display: flex; align-items: center; gap: 10px;
   padding: 12px 22px; border-radius: 999px;
   background: var(--text); color: #fff;
   font-size: 14px; font-weight: 600;
   opacity: 0; pointer-events: none; z-index: 9999;
   white-space: nowrap; box-shadow: var(--shadow);
-  transition: opacity .22s var(--ease), transform .22s var(--ease);
+  transition: opacity .24s var(--ease), transform .24s var(--ease2);
 }
-.toast.is-on { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.is-on    { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast--success { background: #2d6a4f; }
+.toast--error   { background: #c0392b; }
+.toast--warning { background: #b45309; }
+.toast--info    { background: var(--brand-dark); }
+
+/* ---------- Button loading state ---------- */
+@keyframes btnSpin { to { transform: rotate(360deg); } }
+.btn--loading {
+  pointer-events: none; opacity: .78;
+}
+.btn--loading::before {
+  content: "";
+  display: inline-block;
+  width: 14px; height: 14px; flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: rgba(255,255,255,.90);
+  border-radius: 50%;
+  animation: btnSpin .65s linear infinite;
+  margin-right: 4px;
+}
+.btn--ghost.btn--loading::before,
+.btn:not(.btn--primary).btn--loading::before {
+  border-color: rgba(29,25,20,.18);
+  border-top-color: rgba(29,25,20,.70);
+}
+
+/* ---------- FormMsg states ---------- */
+.formMsg { min-height: 18px; font-size: 13px; transition: color .2s; }
+.formMsg.is-success { color: #2d6a4f !important; }
+.formMsg.is-error   { color: #c0392b !important; }
+.formMsg.is-info    { color: var(--brand); }
+
+/* ---------- Skeleton shimmer ---------- */
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg,
+    rgba(29,25,20,.06) 0%, rgba(29,25,20,.11) 50%, rgba(29,25,20,.06) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+  border-radius: 10px;
+}
+.skeletonCard {
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid rgba(29,25,20,.06);
+  overflow: hidden;
+}
+.skeletonCard__media { aspect-ratio: 4/3; }
+.skeletonCard__body  { padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 
 /* ---------- Modal générique (adminAddModal, etc.) ---------- */
 .modal {

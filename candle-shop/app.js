@@ -682,13 +682,44 @@ function toast(msg) {
   els.checkoutMsg.textContent = msg;
 }
 
-function uiToast(text) {
+function uiToast(text, type = "") {
   const t = document.getElementById("toast");
   if (!t) return;
   t.textContent = text;
-  t.classList.add("is-on");
+  t.className = "toast is-on" + (type ? ` toast--${type}` : "");
   clearTimeout(uiToast._t);
-  uiToast._t = setTimeout(() => t.classList.remove("is-on"), 1400);
+  uiToast._t = setTimeout(() => t.classList.remove("is-on"), 2200);
+}
+
+function setFormMsg(el, text, type = "") {
+  if (!el) return;
+  el.textContent = text;
+  el.className = "formMsg" + (type ? ` is-${type}` : "");
+  if (type === "success" || type === "error") {
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.textContent = ""; el.className = "formMsg"; }, 3000);
+  }
+}
+
+function btnLoading(btn, loading, originalText = "") {
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.classList.toggle("btn--loading", loading);
+  if (!loading && originalText) btn.textContent = originalText;
+}
+
+function renderProductsSkeleton() {
+  if (!els.grid) return;
+  els.grid.innerHTML = Array.from({ length: 6 }).map(() => `
+    <article class="skeletonCard">
+      <div class="skeletonCard__media skeleton"></div>
+      <div class="skeletonCard__body">
+        <div class="skeleton" style="height:16px;width:65%;"></div>
+        <div class="skeleton" style="height:13px;width:40%;"></div>
+        <div class="skeleton" style="height:18px;width:30%;margin-top:4px;"></div>
+      </div>
+    </article>
+  `).join("");
 }
 
 function bumpCartIcon() {
@@ -1320,10 +1351,8 @@ async function addPackToCart() {
   packSelection = {};
   renderPackPicker();
 
-  if (els.packMsg) {
-    els.packMsg.textContent = "Pack ajouté au panier ✅";
-    setTimeout(() => (els.packMsg.textContent = ""), 2200);
-  }
+  setFormMsg(els.packMsg, "Pack ajouté au panier ✓", "success");
+  uiToast("Pack ajouté au panier ✓", "success");
 
   if (els.cartBtn) {
     els.cartBtn.classList.remove("bump");
@@ -1336,11 +1365,8 @@ async function addPackToCart() {
   Gift Card
 ========== */
 
-function gcSetMsg(text) {
-  if (!els.gcMsg) return;
-  els.gcMsg.textContent = text;
-  clearTimeout(gcSetMsg._t);
-  gcSetMsg._t = setTimeout(() => (els.gcMsg.textContent = ""), 2600);
+function gcSetMsg(text, type = "") {
+  setFormMsg(els.gcMsg, text, type);
 }
 
 function getGiftCardAmount() {
@@ -1393,8 +1419,8 @@ function addGiftCardToCart() {
   const fromName = (els.gcFromName?.value || "").trim();
   const message = (els.gcMessage?.value || "").trim();
 
-  if (!amount || amount <= 0) return gcSetMsg("Montant invalide.");
-  if (!receiver || !receiver.includes("@")) return gcSetMsg("Email du receveur invalide.");
+  if (!amount || amount <= 0) return gcSetMsg("Montant invalide.", "error");
+  if (!receiver || !receiver.includes("@")) return gcSetMsg("Email du receveur invalide.", "error");
 
   const item = {
     id: `gc_${Date.now()}`,
@@ -1419,7 +1445,8 @@ function addGiftCardToCart() {
     els.cartBtn.classList.add("bump");
   }
 
-  gcSetMsg("Carte cadeau ajoutée au panier ✅");
+  gcSetMsg("Carte cadeau ajoutée au panier ✓", "success");
+  uiToast("Carte cadeau ajoutée ✓", "success");
 }
 
 function resetGiftCardForm() {
@@ -1432,7 +1459,7 @@ function resetGiftCardForm() {
   if (els.gcCustomAmount) els.gcCustomAmount.value = "";
   updateCustomAmountUI();
   renderGiftCardPreview();
-  gcSetMsg("Réinitialisé.");
+  gcSetMsg("Réinitialisé.", "info");
 }
 
 /* ==========
@@ -1772,14 +1799,9 @@ els.pdpAddToCart?.addEventListener("click", () => {
   addToCart(currentPdpId, 1);
 
   bumpCartIcon();
-  uiToast("Ajouté au panier ✅");
-
-  if (els.pdpMsg) {
-    els.pdpMsg.textContent = "Ajouté au panier ✅";
-    setTimeout(() => (els.pdpMsg.textContent = ""), 1200);
-  }
-
-  closePdp();
+  uiToast("Ajouté au panier ✓", "success");
+  setFormMsg(els.pdpMsg, "Ajouté ✓", "success");
+  setTimeout(closePdp, 700);
 });
 
 
@@ -1790,7 +1812,7 @@ if (els.cartOverlay) els.cartOverlay.addEventListener("click", closeCart);
 if (els.clearCartBtn) {
   els.clearCartBtn.addEventListener("click", () => {
     clearCart();
-    toast("Panier vidé.");
+    uiToast("Panier vidé.", "info");
   });
 }
 
@@ -2227,12 +2249,12 @@ function initTestiFormModal() {
     const body   = (document.getElementById("testiBody")?.value || "").trim();
     const rating = testiRating;
 
-    if (!name)   { if (msgEl) msgEl.textContent = "Le prénom est requis.";      return; }
-    if (!rating) { if (msgEl) msgEl.textContent = "Choisissez une note.";       return; }
-    if (!body)   { if (msgEl) msgEl.textContent = "Rédigez votre avis s'il vous plaît."; return; }
+    if (!name)   { setFormMsg(msgEl, "Le prénom est requis.", "error");             return; }
+    if (!rating) { setFormMsg(msgEl, "Choisissez une note.", "error");             return; }
+    if (!body)   { setFormMsg(msgEl, "Rédigez votre avis s'il vous plaît.", "error"); return; }
 
-    if (msgEl)  msgEl.textContent = "";
-    if (submit) { submit.disabled = true; submit.textContent = "Envoi en cours…"; }
+    setFormMsg(msgEl, "");
+    btnLoading(submit, true);
 
     const now = new Date();
     const dl  = now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
@@ -2245,8 +2267,8 @@ function initTestiFormModal() {
       });
       showTestiSuccess();
     } catch (err) {
-      if (msgEl)  msgEl.textContent = "❌ " + (err?.message || "Erreur. Réessayez.");
-      if (submit) { submit.disabled = false; submit.textContent = "Publier mon avis"; }
+      setFormMsg(msgEl, "❌ " + (err?.message || "Erreur. Réessayez."), "error");
+      btnLoading(submit, false, "Publier mon avis");
     }
   });
 }
@@ -2471,6 +2493,9 @@ function initTestimonials() {
 ========== */
 
 async function init() {
+  // Skeleton immédiat pendant le chargement
+  renderProductsSkeleton();
+
   // 1) session panier côté backend
   try { await ensureSessionId(); } catch (_) {}
 

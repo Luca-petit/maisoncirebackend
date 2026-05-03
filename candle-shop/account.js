@@ -51,8 +51,12 @@
   nav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => setMenuOpen(false)));
 
   // ── Helpers ──────────────────────────────────────────────
-  function setMsg(el, text) { if (el) el.textContent = text || ""; }
-  function clearMsgs() { setMsg(elLoginMsg, ""); setMsg(elSignupMsg, ""); }
+  function setMsg(el, text, type = "") {
+    if (!el) return;
+    el.textContent = text || "";
+    el.className = "formMsg" + (type ? ` is-${type}` : "");
+  }
+  function clearMsgs() { setMsg(elLoginMsg); setMsg(elSignupMsg); }
   function ensureRevealVisible() {
     document.querySelectorAll(".reveal").forEach(el => el.classList.add("is-in"));
   }
@@ -471,7 +475,38 @@
   ensureRevealVisible();
   initDashTabs();
 
+  // Détecter un lien de reset dans l'URL AVANT tout chargement de session
+  function isRecoveryUrl() {
+    const hash   = new URLSearchParams(window.location.hash.slice(1));
+    const search = new URLSearchParams(window.location.search);
+    return hash.get("type") === "recovery" || search.get("type") === "recovery";
+  }
+
+  // Si c'est un lien de reset, afficher directement le formulaire
+  if (isRecoveryUrl()) {
+    if (elAuthBox)    elAuthBox.style.display    = "";
+    if (elAccountBox) elAccountBox.style.display = "none";
+    showTab("reset");
+  }
+
+  // Sync session Supabase
+  supa.auth.onAuthStateChange((event, session) => {
+    if (event === "PASSWORD_RECOVERY") {
+      if (elAuthBox)    elAuthBox.style.display    = "";
+      if (elAccountBox) elAccountBox.style.display = "none";
+      showTab("reset");
+      return;
+    }
+    if (event === "SIGNED_OUT" || !session) {
+      clearAuth();
+      showAnonymous();
+    }
+  });
+
   (async () => {
+    // Si on est en mode recovery, laisser onAuthStateChange gérer
+    if (isRecoveryUrl()) return;
+
     try {
       const { data: { session } } = await supa.auth.getSession();
 
@@ -489,20 +524,5 @@
       showAnonymous();
     }
   })();
-
-  // Sync si la session change (ex: expiration, autre onglet)
-  supa.auth.onAuthStateChange((event, session) => {
-    if (event === "PASSWORD_RECOVERY") {
-      // L'utilisateur vient de cliquer sur le lien de reset → afficher le formulaire
-      if (elAuthBox)  elAuthBox.style.display  = "";
-      if (elAccountBox) elAccountBox.style.display = "none";
-      showTab("reset");
-      return;
-    }
-    if (event === "SIGNED_OUT" || !session) {
-      clearAuth();
-      showAnonymous();
-    }
-  });
 
 })();

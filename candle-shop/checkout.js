@@ -344,8 +344,11 @@
         status: "preparation",
       };
 
+      const submitBtn = els.form.querySelector("button[type=submit]");
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add("btn--loading"); submitBtn.textContent = "Traitement…"; }
+
       try {
-        setMsg(els, "Envoi...");
+        setMsg(els, "");
         const data = await apiFetch("/api/orders", {
           method: "POST",
           body: JSON.stringify(payload),
@@ -370,6 +373,7 @@
         // setTimeout(() => (window.location.href = "account.html"), 700);
       } catch (err) {
         setMsg(els, `❌ ${err?.message || "Erreur commande"}`);
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove("btn--loading"); submitBtn.textContent = "Confirmer la commande"; }
       }
     });
   });

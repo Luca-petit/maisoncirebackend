@@ -601,10 +601,9 @@ app.post("/api/orders", async (req, res) => {
     if (!cart || typeof cart !== "object") return bad(res, 400, "Panier invalide");
 
         // --- Build toDec (singles + packs) pour décrément ATOMIQUE ---
-    const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
-      ? cart.skus
-      : {};
-    const packs = Array.isArray(cart?.packs) ? cart.packs : [];
+    const skus      = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object") ? cart.skus : {};
+    const packs     = Array.isArray(cart?.packs)      ? cart.packs      : [];
+    const giftcards = Array.isArray(cart?.giftcards)  ? cart.giftcards  : [];
 
     const toDec = {}; // { productId: qtyToRemove }
 
