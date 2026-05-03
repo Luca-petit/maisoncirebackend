@@ -712,7 +712,7 @@ try {
     }),
   });
 } catch (e) {
-  console.error("MAIL client error:", e?.message || e);
+  console.error("❌ MAIL client error:", e?.message || e);
 }
 
 // email admin (best-effort)
@@ -733,7 +733,7 @@ try {
     });
   }
 } catch (e) {
-  console.error("MAIL admin error:", e?.message || e);
+  console.error("❌ MAIL admin error:", e?.message || e);
 }
 
 

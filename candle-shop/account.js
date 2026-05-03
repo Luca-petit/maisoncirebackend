@@ -246,7 +246,10 @@
             <span class="gcCard__amount">${Number(gc.initial_amount).toFixed(0)} €</span>
           </div>
           <div class="gcCard__label">Carte Cadeau</div>
-          <div class="gcCard__code">${gc.code}</div>
+          ${mode === "received"
+            ? `<div class="gcCard__code">${gc.code}</div>`
+            : `<div class="gcCard__code" style="letter-spacing:.18em;opacity:.5;">MC-••••-••••-••••</div>`
+          }
         </div>
         <div class="gcCard__body">
           ${mode === "received" ? `

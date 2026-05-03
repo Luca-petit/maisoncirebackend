@@ -59,7 +59,7 @@ alter table public.orders
   drop constraint if exists orders_status_check;
 alter table public.orders
   add constraint orders_status_check
-  check (status in ('preparation','transit','termine'));
+  check (status in ('en attente du virement','preparation','transit','termine'));
 
 -- Ex: cash uniquement pickup (si tu veux garder cette règle)
 alter table public.orders
