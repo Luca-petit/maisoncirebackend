@@ -328,12 +328,8 @@ async function createGiftCardsFromOrder(orderId, cartGiftcards, senderEmail) {
 setTimeout(sendPendingGiftCards, 10_000);
 setInterval(sendPendingGiftCards, 60 * 60 * 1000);
 
-function computeFreeUnitsSingles(qty) {
-  const q = Math.max(0, Math.floor(Number(qty) || 0));
-  const group5 = Math.floor(q / 5);
-  const rem = q % 5;
-  const group3 = Math.floor(rem / 3);
-  return group5 * 2 + group3 * 1;
+function computeFreeUnitsSingles(_qty) {
+  return 0; // promos packs désactivées
 }
 
 // ---------- Auth via Supabase ----------

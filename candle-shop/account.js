@@ -82,9 +82,25 @@
 
   // ── Récupérer le rôle + infos depuis profiles ───────────
   async function getProfile(userId) {
-    const { data } = await supa.from("profiles").select("role,first_name,last_name").eq("id", userId).maybeSingle();
+    const { data, error } = await supa.from("profiles").select("role,first_name,last_name").eq("id", userId).maybeSingle();
+    if (error) console.warn("getProfile error:", error.message);
     return data || {};
   }
+
+  // Récupère le rôle depuis le backend (service_role key → bypasse RLS, source de vérité)
+  async function getRoleFromBackend(token) {
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      const d = await res.json().catch(() => null);
+      return d?.user?.role || null;
+    } catch {
+      return null;
+    }
+  }
+
   async function getRole(userId) {
     const p = await getProfile(userId);
     return p.role || "user";
@@ -215,7 +231,7 @@
   // ── Gift cards ───────────────────────────────────────
   const GC_GRADIENTS = {
     violet: "linear-gradient(135deg,#7c3aed,#a78bfa,#6d28d9)",
-    sauge:  "linear-gradient(135deg,#2d6a4f,#52b788,#1b4332)",
+    rose:   "linear-gradient(135deg,#c47878,#fdddd0,#b86060)",
     ambre:  "linear-gradient(135deg,#aa8820,#d4b84e,#c9a428)",
     noir:   "linear-gradient(135deg,#1c1814,#3d3530,#0d0b09)",
   };
@@ -530,8 +546,13 @@
       const { data: { session } } = await supa.auth.getSession();
 
       if (session?.access_token) {
-        const profile = await getProfile(session.user.id);
-        const user = { email: session.user.email, role: profile.role || "user", firstName: profile.first_name, lastName: profile.last_name };
+        const [profile, backendRole] = await Promise.all([
+          getProfile(session.user.id),
+          getRoleFromBackend(session.access_token),
+        ]);
+        // Le backend (service_role) est la source de vérité pour le rôle
+        const role = backendRole || profile.role || "user";
+        const user = { email: session.user.email, role, firstName: profile.first_name, lastName: profile.last_name };
         setAuth(session.access_token, user);
         showLogged(user);
       } else {

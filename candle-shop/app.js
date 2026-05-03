@@ -483,11 +483,8 @@ async function saveCart(cart) {
   Offers logic (SINGLES)
 ========== */
 
-function computeFreeUnitsSingles(qty) {
-  const group5 = Math.floor(qty / 5);
-  const rem = qty % 5;
-  const group3 = Math.floor(rem / 3);
-  return group5 * 2 + group3 * 1;
+function computeFreeUnitsSingles(_qty) {
+  return 0; // promos packs désactivées
 }
 
 /* ==========
@@ -954,8 +951,7 @@ function addToCart(productId, qty = 1) {
     card.classList.add("flash");
   }
 
-  
-  ge();
+  renderCartBadge();
   renderCart();
   renderProducts(); // refresh grisage live
 }
@@ -1814,23 +1810,16 @@ els.pdpNotifyEmail?.addEventListener("input", () => {
 els.pdpClose?.addEventListener("click", closePdp);
 els.pdpOverlay?.addEventListener("click", closePdp);
 
-// PDP add to cart — même logique que les gift cards : push direct, pas d'early exit
+// PDP add to cart
 els.pdpAddToCart?.addEventListener("click", () => {
   if (!currentPdpId) return;
-
-  // Ajout direct dans cart.skus (comme cart.giftcards.push pour les GC)
-  cart.skus[currentPdpId] = (cart.skus[currentPdpId] || 0) + 1;
-
-  saveCart(cart);
-  renderCartBadge();
-  renderCart();
-
-  if (els.cartBtn) {
-    els.cartBtn.classList.remove("bump");
-    void els.cartBtn.offsetWidth;
-    els.cartBtn.classList.add("bump");
+  const left = availableStock(currentPdpId);
+  if (left <= 0) {
+    uiToast("Stock épuisé", "error");
+    if (els.pdpAddToCart) els.pdpAddToCart.disabled = true;
+    return;
   }
-
+  addToCart(currentPdpId, 1);
   uiToast("Ajouté au panier ✓", "success");
   closePdp();
 });
@@ -1869,10 +1858,13 @@ function isMenuOpen() {
 
 function setMenuOpen(open) {
   if (!els.nav || !els.hamburger) return;
+  const overlay = document.getElementById("navOverlay");
   els.nav.classList.toggle("open",    open);
   els.nav.classList.toggle("is-open", open);
   els.hamburger.classList.toggle("is-open", open);
   els.hamburger.setAttribute("aria-expanded", String(open));
+  if (overlay) overlay.classList.toggle("is-open", open);
+  document.body.style.overflow = open ? "hidden" : "";
 }
 
 els.hamburger?.addEventListener("click", e => {
@@ -1880,12 +1872,8 @@ els.hamburger?.addEventListener("click", e => {
   setMenuOpen(!isMenuOpen());
 });
 
-// Fermer en cliquant en dehors du nav et du hamburger
-document.addEventListener("click", e => {
-  if (!isMenuOpen()) return;
-  if (els.nav?.contains(e.target) || els.hamburger?.contains(e.target)) return;
-  setMenuOpen(false);
-});
+document.getElementById("navClose")?.addEventListener("click", () => setMenuOpen(false));
+document.getElementById("navOverlay")?.addEventListener("click", () => setMenuOpen(false));
 
 document.addEventListener("keydown", e => { if (e.key === "Escape") setMenuOpen(false); });
 window.addEventListener("scroll",    () => { if (isMenuOpen()) setMenuOpen(false); }, { passive: true });

@@ -2,13 +2,13 @@ export function giftCardEmail({ code, amount, fromName, message, recipientEmail,
 
   const solids = {
     violet: "#7c3aed",
-    sauge:  "#2d6a4f",
+    rose:  "#c47878",
     ambre:  "#b8920a",
     noir:   "#1c1814",
   };
   const grads = {
     violet: "linear-gradient(135deg,#7c3aed,#a78bfa,#6d28d9)",
-    sauge:  "linear-gradient(135deg,#2d6a4f,#52b788,#1b4332)",
+    rose:  "linear-gradient(135deg,#c47878,#fdddd0,#b86060)",
     ambre:  "linear-gradient(135deg,#aa8820,#d4b84e,#c9a428)",
     noir:   "linear-gradient(135deg,#1c1814,#3d3530,#0d0b09)",
   };

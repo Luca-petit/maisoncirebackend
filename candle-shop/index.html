@@ -28,15 +28,25 @@
     </button>
 
     <div class="brand">
-      <span class="brandDot"></span>
-      <span class="brandText">Guadaluz</span>
+      <img src="images/logo.jpg" alt="Guadaluz" class="brandLogo" />
     </div>
 
     <nav class="nav" id="nav" aria-label="Navigation">
+      <button class="navClose" id="navClose" aria-label="Fermer le menu" type="button">✕</button>
       <a href="#boutique">Boutique</a>
-      <a href="#packs">Packs</a>
       <a id="accountLink" href="account.html">Connexion</a>
+      <div class="navSocial">
+        <a href="https://www.facebook.com" target="_blank" rel="noopener" class="navSocial__link" aria-label="Facebook">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          Facebook
+        </a>
+        <a href="https://www.instagram.com" target="_blank" rel="noopener" class="navSocial__link" aria-label="Instagram">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          Instagram
+        </a>
+      </div>
     </nav>
+    <div class="navOverlay" id="navOverlay" aria-hidden="true"></div>
 
     <div class="headerActions">
       <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
@@ -48,25 +58,15 @@
 
   <main>
     <!-- Hero -->
-    <section class="hero0" id="top">
-      <div class="hero0__bg" aria-hidden="true"></div>
-      <div class="hero0__inner">
-        <div class="hero0__content reveal">
-          <span class="hero0__tag">Bijoux artisanaux · Or & Pierres · Fait main</span>
-
-          <h1 class="hero0__title">
-            L’éclat qui <span class="hero0__grad">sublime</span> votre élégance.
-          </h1>
-
-          <p class="hero0__lead">
-            Des bijoux premium conçus pour sublimer chaque instant.
-            Achetez à l’unité ou composez votre pack (3 ou 5) avec remise automatique.
-          </p>
-
-          <div class="hero0__actions">
-            <a class="btn btn--primary" href="#boutique">Découvrir la collection</a>
-            <a class="btn btn--ghost" href="#packs">Composer un pack</a>
-          </div>
+    <section class="hero" id="top">
+      <div class="hero__watermark" aria-hidden="true"></div>
+      <div class="hero__inner">
+        <span class="hero__eyebrow">Handmade Jewelry</span>
+        <div class="hero__line" aria-hidden="true"></div>
+        <h1 class="hero__title">Forgé à la main,<br>pensé pour vous.</h1>
+        <p class="hero__sub">Chaque bijou Guada'Luz est une pièce unique, façonnée avec soin<br>pour révéler votre éclat naturel.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary" href="#boutique">Découvrir la collection</a>
         </div>
       </div>
     </section>
@@ -80,99 +80,6 @@
     </section>
 
     <!-- Packs -->
-    <section class="section reveal" id="packs">
-      <div class="section__head">
-        <h2>Construire un pack</h2>
-        <p class="muted">Choisis un pack, compose-le, puis ajoute-le au panier.</p>
-      </div>
-
-      <div class="packWizard">
-        <div class="packStep" id="packStep1">
-          <h3 class="packStep__title">1) Choisir un pack</h3>
-
-          <div class="packTypes">
-            <button class="packTypeCard" data-packtype="3" type="button">
-              <div class="packTypeCard__top">
-                <span class="pill">Populaire</span>
-                <span class="badge">3 articles</span>
-              </div>
-              <h4>Pack 3</h4>
-              <p>Tu en choisis 3, <strong>le moins cher est offert</strong>.</p>
-            </button>
-
-            <button class="packTypeCard" data-packtype="5" type="button">
-              <div class="packTypeCard__top">
-                <span class="pill">Meilleure valeur</span>
-                <span class="badge">5 articles</span>
-              </div>
-              <h4>Pack 5</h4>
-              <p>Tu en choisis 5, <strong>les 2 moins chers sont offerts</strong>.</p>
-            </button>
-          </div>
-
-          <div class="row" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
-            <div class="muted" id="packChosenText">Aucun pack sélectionné.</div>
-            <button class="btn btn--primary" id="packGoStep2" type="button" disabled>Continuer</button>
-          </div>
-        </div>
-
-        <div class="packStep hidden" id="packStep2">
-          <div class="packStep__head">
-            <div>
-              <h3 class="packStep__title">2) Composer votre pack</h3>
-              <p class="muted" id="packStep2Subtitle"></p>
-            </div>
-
-            <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;">
-              <button class="btn btn--ghost" id="packBack" type="button">Retour</button>
-              <button class="btn btn--ghost" id="packReset" type="button">Réinitialiser</button>
-            </div>
-          </div>
-
-          <div class="packBuilder">
-            <div class="packBuilder__left">
-              <div class="packPickGrid" id="packPickGrid"></div>
-            </div>
-
-            <div class="packBuilder__right">
-              <div class="packPreview">
-                <div class="packPreview__head">
-                  <h3>Votre pack</h3>
-                  <span class="badge" id="packProgress">0 / 3</span>
-                </div>
-
-                <div id="packPreviewLines" class="packPreview__lines"></div>
-
-                <div class="packPreview__summary">
-                  <div class="sumRow">
-                    <span>Valeur</span>
-                    <strong id="packValue">0,00 €</strong>
-                  </div>
-                  <div class="sumRow">
-                    <span>Offert</span>
-                    <strong id="packFree">- 0,00 €</strong>
-                  </div>
-                  <div class="sumRow sumRow--total">
-                    <span>Total pack</span>
-                    <strong id="packTotal">0,00 €</strong>
-                  </div>
-
-                  <p class="tiny muted" id="packHint"></p>
-
-                  <button class="btn btn--primary w100" id="addPackBtn" type="button" disabled>
-                    Ajouter le pack au panier
-                  </button>
-
-                  <p class="formMsg" id="packMsg" role="status" aria-live="polite"></p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
     <!-- Carte Cadeau -->
    <section class="section reveal" id="giftcard">
     <div class="section__head">
@@ -238,7 +145,7 @@
 
   <div class="colorSwatches" role="radiogroup" aria-label="Choisir une couleur">
     <button class="swatch is-selected" type="button" data-gc-color="violet" role="radio" aria-checked="true" aria-label="Violet"></button>
-    <button class="swatch" type="button" data-gc-color="sauge" role="radio" aria-checked="false" aria-label="Sauge"></button>
+    <button class="swatch" type="button" data-gc-color="rose" role="radio" aria-checked="false" aria-label="Rose"></button>
     <button class="swatch" type="button" data-gc-color="ambre" role="radio" aria-checked="false" aria-label="Ambre"></button>
     <button class="swatch" type="button" data-gc-color="noir" role="radio" aria-checked="false" aria-label="Noir"></button>
   </div>
