@@ -99,6 +99,10 @@ function getAdminKey() {
 }
 
 
+function shortId(id) {
+  return String(id || "").slice(0, 8).toUpperCase();
+}
+
 function formatDateTimeFR(ts) {
   if (!ts) return "";
   try {
@@ -155,7 +159,7 @@ const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
     </div>
 
     <p class="tiny muted" style="margin-top:6px;">
-      <strong>#${escapeHTML(order.id)}</strong> · ${escapeHTML(formatDateTimeFR(order.created_at))}
+      <strong>#${shortId(order.id)}</strong> · ${escapeHTML(formatDateTimeFR(order.created_at))}
     </p>
 
     <div style="margin-top:10px;">
@@ -247,7 +251,7 @@ async function loadAdminOrders() {
     els.adminOrdersList.innerHTML = orders.map(o => `
       <button type="button" class="adminOrderRow" data-admin-order-open="${o.id}">
         <div>
-          <strong>#${o.id}</strong>
+          <strong>#${shortId(o.id)}</strong>
           <div class="tiny muted">${formatDateTimeFR(o.created_at)} · ${o.items_count} article(s)</div>
         </div>
         <div style="text-align:right">

@@ -152,7 +152,7 @@
         const delivery = o.delivery_mode === "shipping" ? "🚚 Envoi" : "🏪 Retrait";
         const payment  = o.payment_mode  === "cash"     ? "💵 Cash"  : "🏦 Virement";
         const date     = formatDate(o.created_at);
-        const idShort  = String(o.id).slice(0, 8).toUpperCase();
+        const idShort  = String(o.id || "").slice(0, 8).toUpperCase();
 
         return `
           <div class="orderCard">

@@ -268,10 +268,11 @@ create table if not exists public.gift_cards (
   message         text         not null default '',
   color           text         not null default 'ambre',
 
-  send_date       date,
-  sent_at         timestamptz,
+  send_date           date,
+  sent_at             timestamptz,
+  payment_confirmed   boolean      not null default false,
 
-  is_active       boolean      not null default true,
+  is_active           boolean      not null default true,
   order_id        uuid         references public.orders(id) on delete set null,
   created_at      timestamptz  not null default now()
 );

@@ -182,6 +182,10 @@ function countItemsInCart(cart) {
 
 // ---------- Gift card helpers ----------
 
+function shortId(id) {
+  return String(id || "").slice(0, 8).toUpperCase();
+}
+
 function generateGiftCardCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   const seg = (n) => Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
@@ -205,12 +209,14 @@ async function sendGiftCardMail(gc) {
   });
 }
 
+// Envoie les cartes dont payment_confirmed=true et send_date atteinte
 async function sendPendingGiftCards() {
   try {
     const today = new Date().toISOString().split("T")[0];
     const { data: pending, error } = await supabase
       .from("gift_cards")
       .select("*")
+      .eq("payment_confirmed", true)
       .or(`send_date.lte.${today},send_date.is.null`)
       .is("sent_at", null)
       .eq("is_active", true);
@@ -229,8 +235,43 @@ async function sendPendingGiftCards() {
   }
 }
 
+// Appelé quand commande passe à "terminé" — confirme les cartes et envoie si date atteinte
+async function confirmAndSendGiftCards(orderId) {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Marquer toutes les cartes de cette commande comme confirmées
+    const { data: cards, error } = await supabase
+      .from("gift_cards")
+      .update({ payment_confirmed: true })
+      .eq("order_id", orderId)
+      .eq("payment_confirmed", false)
+      .is("sent_at", null)
+      .select("*");
+    if (error) throw error;
+
+    for (const gc of cards || []) {
+      const sendDate = gc.send_date || today;
+      if (sendDate <= today) {
+        // Date déjà atteinte → envoi immédiat
+        try {
+          await sendGiftCardMail(gc);
+          await supabase.from("gift_cards").update({ sent_at: new Date().toISOString() }).eq("id", gc.id);
+          console.log(`✅ Gift card sent immediately: ${gc.code} → ${gc.recipient_email}`);
+        } catch (e) {
+          console.error(`❌ Gift card immediate send failed ${gc.code}:`, e.message);
+        }
+      } else {
+        // Date future → le cron s'en chargera
+        console.log(`📅 Gift card scheduled: ${gc.code} → ${gc.recipient_email} on ${sendDate}`);
+      }
+    }
+  } catch (e) {
+    console.error("confirmAndSendGiftCards error:", e.message);
+  }
+}
+
 async function createGiftCardsFromOrder(orderId, cartGiftcards, senderEmail) {
-  const today = new Date().toISOString().split("T")[0];
   for (const gc of cartGiftcards || []) {
     let code;
     for (let i = 0; i < 10; i++) {
@@ -238,28 +279,22 @@ async function createGiftCardsFromOrder(orderId, cartGiftcards, senderEmail) {
       const { data: existing } = await supabase.from("gift_cards").select("id").eq("code", code).maybeSingle();
       if (!existing) break;
     }
-    const sendDate = gc.sendDate || today;
-    const { data: created, error } = await supabase
+    const { error } = await supabase
       .from("gift_cards")
       .insert({
         code,
-        initial_amount:  Math.round(Number(gc.amount || 0) * 100) / 100,
-        balance:         Math.round(Number(gc.amount || 0) * 100) / 100,
-        sender_email:    senderEmail,
-        recipient_email: String(gc.receiver || "").toLowerCase(),
-        from_name:       gc.fromName  || "",
-        message:         gc.message   || "",
-        color:           gc.color     || "ambre",
-        send_date:       sendDate,
-        order_id:        orderId,
-      })
-      .select("*")
-      .single();
-    if (error) { console.error("createGiftCard error:", error.message); continue; }
-    if (sendDate <= today) {
-      try { await sendGiftCardMail(created); await supabase.from("gift_cards").update({ sent_at: new Date().toISOString() }).eq("id", created.id); }
-      catch (e) { console.error("Gift card immediate send error:", e.message); }
-    }
+        initial_amount:     Math.round(Number(gc.amount || 0) * 100) / 100,
+        balance:            Math.round(Number(gc.amount || 0) * 100) / 100,
+        sender_email:       senderEmail,
+        recipient_email:    String(gc.receiver || "").toLowerCase(),
+        from_name:          gc.fromName  || "",
+        message:            gc.message   || "",
+        color:              gc.color     || "ambre",
+        send_date:          gc.sendDate  || null,
+        payment_confirmed:  false,   // sera confirmé quand commande = "terminé"
+        order_id:           orderId,
+      });
+    if (error) console.error("createGiftCard error:", error.message);
   }
 }
 
@@ -700,9 +735,9 @@ const ibanHtml = (isTransfer && iban)
 try {
   await sendMail({
     to: email,
-    subject: `Maison Cire — Confirmation de commande #${data.id}`,
+    subject: `Maison Cire — Confirmation de commande #${shortId(data.id)}`,
     html: orderConfirmationEmail({
-      orderId: data.id,
+      orderId: shortId(data.id),
       total: Number(total || 0).toFixed(2),
       deliveryLabel,
       paymentLabel,
@@ -721,9 +756,9 @@ try {
   if (adminTo) {
     await sendMail({
       to: adminTo,
-      subject: `Nouvelle commande #${data.id}`,
+      subject: `Nouvelle commande #${shortId(data.id)}`,
       html: adminNewOrderEmail({
-        orderId: data.id,
+        orderId: shortId(data.id),
         email,
         total: Number(total || 0).toFixed(2),
         deliveryLabel,
@@ -1138,9 +1173,9 @@ try {
 
     await sendMail({
       to: order.email,
-      subject: `Maison Cire — Commande #${order.id} : ${statusLabel}`,
+      subject: `Maison Cire — Commande #${shortId(order.id)} : ${statusLabel}`,
       html: orderStatusEmail({
-        orderId: order.id,
+        orderId: shortId(order.id),
         statusLabel,
       }),
       text: `Commande #${order.id} — Statut : ${statusLabel}`, // fallback simple
@@ -1150,6 +1185,13 @@ try {
   console.error("MAIL status error:", e?.message || e);
 }
 
+
+    // Si commande terminée → confirmer et envoyer les cartes cadeaux associées
+    if (status === "termine") {
+      confirmAndSendGiftCards(id).catch(e =>
+        console.error("confirmAndSendGiftCards error:", e.message)
+      );
+    }
 
     return ok(res, { ok: true, order });
   } catch (e) {
