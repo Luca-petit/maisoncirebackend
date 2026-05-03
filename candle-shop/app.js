@@ -2527,12 +2527,19 @@ async function init() {
     products = loadProducts();
   }
 
-  // 3) charge panier depuis backend (si existe)
+  // 3) charge panier depuis backend — ne pas écraser si l'user a déjà ajouté des articles
   try {
     const srvCart = await apiLoadCart();
     if (srvCart) {
-      cart = srvCart;
-      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      const countCart = (c) =>
+        Object.values(c?.skus || {}).reduce((a, b) => a + b, 0) +
+        (c?.packs || []).length +
+        (c?.giftcards || []).length;
+      // Prend le panier le plus garni (local vs serveur)
+      if (countCart(srvCart) > countCart(cart)) {
+        cart = srvCart;
+        localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      }
     }
   } catch (_) {}
 
