@@ -50,7 +50,7 @@ export function orderConfirmationEmail({
         <hr style="border:none;border-top:1px solid #eee;margin:18px 0;" />
 
         <p style="margin:0;color:#999;font-size:12px;">
-          © ${year} Maison Cire
+          © ${year} Guadaluz
         </p>
       </div>
     </div>

@@ -8,7 +8,7 @@ export function orderStatusEmail({ orderId, statusLabel }) {
       <div style="background:#ffffff;border-radius:16px;padding:22px;box-shadow:0 10px 30px rgba(0,0,0,.06);">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:10px;height:10px;border-radius:999px;background:#111;"></div>
-          <div style="font-weight:700;">Maison Cire</div>
+          <div style="font-weight:700;">Guadaluz</div>
         </div>
 
         <h1 style="margin:18px 0 8px;font-size:20px;">Mise à jour de votre commande 📦</h1>
@@ -21,11 +21,11 @@ export function orderStatusEmail({ orderId, statusLabel }) {
         </div>
 
         <p style="margin:18px 0 0;color:#666;font-size:13px;line-height:1.5;">
-          Merci de votre confiance — Maison Cire.
+          Merci de votre confiance — Guadaluz.
         </p>
 
         <hr style="border:none;border-top:1px solid #eee;margin:18px 0;" />
-        <p style="margin:0;color:#999;font-size:12px;">© ${year} Maison Cire</p>
+        <p style="margin:0;color:#999;font-size:12px;">© ${year} Guadaluz</p>
       </div>
     </div>
   </body>

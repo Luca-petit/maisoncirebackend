@@ -1,4 +1,4 @@
-// Maison Cire — checkout.js (FIXED)
+// Guadaluz — checkout.js (FIXED)
 // - POST /api/orders (server.js)
 // - DOM safe (wait DOMContentLoaded)
 // - Calculates totals like app.js (singles promos + packs totals + giftcards)

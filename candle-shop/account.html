@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Maison Cire — Mon compte</title>
+  <title>Guadaluz — Mon compte</title>
   <link rel="stylesheet" href="styles.css" />
   <script>window.__API_BASE__ = "https://backendmaisoncire.onrender.com";</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,18 +11,17 @@
 <body>
 
   <header class="header">
+    <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+      <span class="hamburger__bars" aria-hidden="true"></span>
+    </button>
+
     <div class="brand">
       <span class="brandDot"></span>
-      <span class="brandText">Maison Cire</span>
+      <span class="brandText">Guadaluz</span>
     </div>
     <nav class="nav" id="nav" aria-label="Navigation">
       <a href="index.html">← Retour à la boutique</a>
     </nav>
-    <div class="headerActions">
-      <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
-        <span class="hamburger__bars" aria-hidden="true"></span>
-      </button>
-    </div>
   </header>
 
   <main class="main">
@@ -108,16 +107,41 @@
         <form id="signupForm" class="authForm" style="display:none;">
           <h3 class="authForm__title">Créer un compte</h3>
 
+          <div class="authForm__row">
+            <label class="label">
+              Prénom *
+              <input class="input" type="text" id="signupFirstName"
+                placeholder="Emma" autocomplete="given-name" required />
+            </label>
+            <label class="label">
+              Nom *
+              <input class="input" type="text" id="signupLastName"
+                placeholder="Dupont" autocomplete="family-name" required />
+            </label>
+          </div>
+
           <label class="label">
-            Email
+            Email *
             <input class="input" type="email" id="signupEmail"
               placeholder="email@exemple.com" autocomplete="email" required />
           </label>
 
           <label class="label">
-            Mot de passe
+            Mot de passe *
             <input class="input" type="password" id="signupPassword"
               placeholder="Min. 6 caractères" autocomplete="new-password" required />
+          </label>
+
+          <label class="label">
+            Téléphone
+            <input class="input" type="tel" id="signupPhone"
+              placeholder="+33 6 12 34 56 78" autocomplete="tel" />
+          </label>
+
+          <label class="label">
+            Adresse
+            <input class="input" type="text" id="signupAddress"
+              placeholder="12 rue des Fleurs, 75001 Paris" autocomplete="street-address" />
           </label>
 
           <button class="btn btn--primary w100" type="submit">Créer mon compte</button>
@@ -186,7 +210,7 @@
     <section class="section reveal" id="admin" style="display:none;">
       <div class="section__head">
         <h2>Dashboard</h2>
-        <p class="muted">Gestion de la boutique Maison Cire.</p>
+        <p class="muted">Gestion de la boutique Guadaluz.</p>
       </div>
 
       <!-- Legacy (kept for account.js compat, hidden) -->

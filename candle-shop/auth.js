@@ -1,4 +1,4 @@
-// Maison Cire — auth.js (front)
+// Guadaluz — auth.js (front)
 // - Met à jour le menu: Connexion / Mon compte
 // - Helpers pour lire/écrire le token
 

@@ -1,5 +1,5 @@
 /* =========================================================
-   Maison Cire — app.js (FULL)
+   Guadaluz — app.js (FULL)
    ✅ Includes: Boutique + Panier (singles + packs + giftcards) + Admin + Newsletter
    ✅ Includes: Pack Wizard (Step 1 choose pack, Step 2 compose, then add pack)
    ✅ Includes: Carte Cadeau (live preview + add to cart + remove in cart)
@@ -1860,26 +1860,36 @@ if (els.checkoutBtn) {
 
 
 /* =========================
-   HAMBURGER MENU (FIX)
+   HAMBURGER MENU
 ========================= */
+
+function isMenuOpen() {
+  return els.nav?.classList.contains("is-open") || els.nav?.classList.contains("open");
+}
 
 function setMenuOpen(open) {
   if (!els.nav || !els.hamburger) return;
-
-  // on met les 2 classes pour être compatible avec ton CSS
-  els.nav.classList.toggle("open", open);
+  els.nav.classList.toggle("open",    open);
   els.nav.classList.toggle("is-open", open);
-
   els.hamburger.classList.toggle("is-open", open);
   els.hamburger.setAttribute("aria-expanded", String(open));
 }
 
-els.hamburger?.addEventListener("click", () => {
-  const isOpen = els.nav?.classList.contains("open") || els.nav?.classList.contains("is-open");
-  setMenuOpen(!isOpen);
+els.hamburger?.addEventListener("click", e => {
+  e.stopPropagation();
+  setMenuOpen(!isMenuOpen());
 });
 
-// ✅ Fermer quand on clique sur un lien du menu
+// Fermer en cliquant en dehors du nav et du hamburger
+document.addEventListener("click", e => {
+  if (!isMenuOpen()) return;
+  if (els.nav?.contains(e.target) || els.hamburger?.contains(e.target)) return;
+  setMenuOpen(false);
+});
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") setMenuOpen(false); });
+window.addEventListener("scroll",    () => { if (isMenuOpen()) setMenuOpen(false); }, { passive: true });
+
 document.querySelectorAll("#nav a").forEach(a => {
   a.addEventListener("click", () => setMenuOpen(false));
 });
@@ -2534,16 +2544,6 @@ window.searchClient = searchClient;
   Testimonials carousel
 ========== */
 
-const TESTIMONIALS_FALLBACK = [
-  { name: "Sofia M.",   rating: 5, body: "La bague solitaire est absolument sublime — l'or est d'une qualité impeccable. Je la porte tous les jours !", date_label: "Avril 2025" },
-  { name: "Lucas R.",   rating: 5, body: "J'ai offert le Pack 3 à ma femme pour notre anniversaire, elle a été touchée aux larmes. Présentation digne d'une grande maison.", date_label: "Mars 2025" },
-  { name: "Emma D.",    rating: 5, body: "Le collier perles est d'une élégance rare. Le fermoir est solide et le soin du détail se voit. J'en ai commandé un second.", date_label: "Avril 2025" },
-  { name: "Thomas B.",  rating: 4, body: "Livraison soignée, bijoux de qualité. Le bracelet jonc est devenu mon incontournable. Le pack 5 est une vraie affaire.", date_label: "Mars 2025" },
-  { name: "Chloé L.",   rating: 5, body: "Ça fait 3 commandes chez Maison Cire, jamais déçue. La carte cadeau est idéale pour les cadeaux de dernière minute.", date_label: "Février 2025" },
-  { name: "Nathan V.",  rating: 5, body: "Finitions premium, pièces qui ne ternissent pas. Le pendentif cœur est parfait comme cadeau, mes amis l'ont adoré.", date_label: "Janvier 2025" },
-  { name: "Inès K.",    rating: 5, body: "Packaging luxueux, bijoux magnifiques. Les créoles dorées sont légères et élégantes. Je reviendrai sans hésiter.", date_label: "Mars 2025" },
-  { name: "Romain T.",  rating: 5, body: "Très belle découverte ! Le pack 3 est un excellent rapport qualité-prix. Les bijoux sont beaux et bien finis.", date_label: "Février 2025" },
-];
 
 function initTestimonials() {
   const track    = document.getElementById("testiTrack");
@@ -2554,7 +2554,7 @@ function initTestimonials() {
   const GAP = 24;
   let current = 0;
   let timer;
-  let ITEMS = TESTIMONIALS_FALLBACK;
+  let ITEMS = [];
 
   function perView() {
     return window.innerWidth >= 900 ? 3 : window.innerWidth >= 580 ? 2 : 1;
@@ -2587,7 +2587,9 @@ function initTestimonials() {
   }
 
   function updateScoreBlock(items) {
-    if (!items.length) return;
+    const scoreBlock = document.getElementById("testiScoreBlock");
+    if (!items.length) { if (scoreBlock) scoreBlock.style.display = "none"; return; }
+
     const avg   = items.reduce((s, t) => s + (Number(t.rating) || 0), 0) / items.length;
     const count = items.length;
     const full  = Math.round(avg);
@@ -2598,7 +2600,8 @@ function initTestimonials() {
     const lblEl   = document.getElementById("testiAvgLabel");
     if (numEl)   numEl.textContent   = avg.toFixed(1).replace(".", ",");
     if (starsEl) starsEl.textContent = stars;
-    if (lblEl)   lblEl.textContent   = `${count} avis vérifiés`;
+    if (lblEl)   lblEl.textContent   = `${count} avis vérifi${count > 1 ? "és" : "é"}`;
+    if (scoreBlock) scoreBlock.style.display = "";
   }
 
   async function loadFromApi() {

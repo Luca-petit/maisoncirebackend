@@ -143,11 +143,21 @@ using (bucket_id = 'products');
 -- Table profiles
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  email text,
-  role text not null default 'user',
+  email      text,
+  role       text not null default 'user',
+  first_name text,
+  last_name  text,
+  phone      text,
+  address    text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- Migration : ajouter les colonnes si elles n'existent pas déjà
+alter table public.profiles add column if not exists first_name text;
+alter table public.profiles add column if not exists last_name  text;
+alter table public.profiles add column if not exists phone      text;
+alter table public.profiles add column if not exists address    text;
 
 -- Contrainte role
 alter table public.profiles

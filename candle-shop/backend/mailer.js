@@ -1,6 +1,6 @@
 // Mailer via Resend — le serveur démarre même si resend n'est pas installé
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM = process.env.MAIL_FROM || "Maison Cire <onboarding@resend.dev>";
+const FROM = process.env.MAIL_FROM || "Guadaluz <onboarding@resend.dev>";
 
 let _resend = null;
 

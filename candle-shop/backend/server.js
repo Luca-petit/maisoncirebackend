@@ -1,4 +1,4 @@
-// Maison Cire — backend/server.js (clean)
+// Guadaluz — backend/server.js (clean)
 // ✅ Products + Cart + Orders + Reviews + Notify + Admin + Auth (email/password)
 
 import "dotenv/config";
@@ -222,7 +222,7 @@ async function sendGiftCardMail(gc) {
   const shopUrl = process.env.SHOP_URL || "https://backendmaisoncire.onrender.com";
   await sendMail({
     to: gc.recipient_email,
-    subject: `Maison Cire — Votre carte cadeau de ${Number(gc.initial_amount).toFixed(0)} €`,
+    subject: `Guadaluz — Votre carte cadeau de ${Number(gc.initial_amount).toFixed(0)} €`,
     html: giftCardEmail({
       code:           gc.code,
       amount:         gc.initial_amount,
@@ -745,7 +745,7 @@ const owner = process.env.BANK_OWNER || "";
 const ibanHtml = (isTransfer && iban)
   ? `
     <div style="margin-top:10px;background:#fff;border:1px solid #eee;border-radius:10px;padding:12px;">
-      <p style="margin:0 0 6px;"><strong>Titulaire :</strong> ${owner || "Maison Cire"}</p>
+      <p style="margin:0 0 6px;"><strong>Titulaire :</strong> ${owner || "Guadaluz"}</p>
       <p style="margin:0 0 6px;"><strong>IBAN :</strong> ${iban}</p>
       ${bic ? `<p style="margin:0;"><strong>BIC :</strong> ${bic}</p>` : ""}
     </div>
@@ -761,7 +761,7 @@ const ibanHtml = (isTransfer && iban)
 try {
   await sendMail({
     to: email,
-    subject: `Maison Cire — Confirmation de commande #${shortId(data.id)}`,
+    subject: `Guadaluz — Confirmation de commande #${shortId(data.id)}`,
     html: orderConfirmationEmail({
       orderId: shortId(data.id),
       total: Number(total || 0).toFixed(2),
@@ -1199,7 +1199,7 @@ try {
 
     await sendMail({
       to: order.email,
-      subject: `Maison Cire — Commande #${shortId(order.id)} : ${statusLabel}`,
+      subject: `Guadaluz — Commande #${shortId(order.id)} : ${statusLabel}`,
       html: orderStatusEmail({
         orderId: shortId(order.id),
         statusLabel,

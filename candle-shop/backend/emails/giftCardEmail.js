@@ -81,7 +81,7 @@ export function giftCardEmail({ code, amount, fromName, message, recipientEmail,
         <tr>
           <td style="text-align:center;padding-bottom:22px;">
             <span class="header-txt" style="font-size:11px;font-weight:800;color:#aaa;letter-spacing:.16em;text-transform:uppercase;">
-              Maison Cire · Bijoux
+              Guadaluz · Bijoux
             </span>
           </td>
         </tr>
@@ -96,7 +96,7 @@ export function giftCardEmail({ code, amount, fromName, message, recipientEmail,
               <tr>
                 <td style="vertical-align:top;">
                   <span style="font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.80);">
-                    Maison Cire
+                    Guadaluz
                   </span>
                 </td>
                 <td style="vertical-align:top;text-align:right;">
@@ -191,7 +191,7 @@ export function giftCardEmail({ code, amount, fromName, message, recipientEmail,
         <tr>
           <td style="text-align:center;">
             <p class="footer-txt" style="margin:0;color:#bbb;font-size:11px;line-height:1.7;">
-              © Maison Cire &nbsp;·&nbsp; Ce code est personnel et non transférable<br>
+              © Guadaluz &nbsp;·&nbsp; Ce code est personnel et non transférable<br>
               Solde valable sans limite de durée
             </p>
           </td>

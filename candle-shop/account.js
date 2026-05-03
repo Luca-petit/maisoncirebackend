@@ -1,4 +1,4 @@
-// Maison Cire — account.js
+// Guadaluz — account.js
 // ✅ Auth 100 % via Supabase Auth (signUp / signInWithPassword / getSession / signOut)
 // ✅ Rôle récupéré depuis la table `profiles` (id = auth.users.id)
 // ✅ Token Supabase stocké → utilisé pour les appels backend admin
@@ -32,24 +32,6 @@
   const elMyOrdersList     = document.getElementById("myOrdersList");
   const elAdminSection     = document.getElementById("admin");
 
-  const hamburger = document.getElementById("hamburger");
-  const nav       = document.getElementById("nav");
-  if (!hamburger || !nav) return;
-  if (hamburger.dataset.bound === "1") return;
-  hamburger.dataset.bound = "1";
-
-  // ── Hamburger ────────────────────────────────────────────
-  function setMenuOpen(open) {
-    nav.classList.toggle("open",    open);
-    nav.classList.toggle("is-open", open);
-    hamburger.classList.toggle("is-open", open);
-    hamburger.setAttribute("aria-expanded", String(open));
-  }
-  hamburger.addEventListener("click", () => {
-    setMenuOpen(!(nav.classList.contains("open") || nav.classList.contains("is-open")));
-  });
-  nav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => setMenuOpen(false)));
-
   // ── Helpers ──────────────────────────────────────────────
   function setMsg(el, text, type = "") {
     if (!el) return;
@@ -74,6 +56,7 @@
     Object.entries(forms).forEach(([key, el]) => {
       if (el) el.style.display = key === which ? "" : "none";
     });
+    elAuthBox?.classList.toggle("authCard--wide", which === "signup");
     clearMsgs();
   }
 
@@ -97,10 +80,14 @@
     window.MC_AUTH?.refreshNav?.();
   }
 
-  // ── Récupérer le rôle depuis profiles ───────────────────
+  // ── Récupérer le rôle + infos depuis profiles ───────────
+  async function getProfile(userId) {
+    const { data } = await supa.from("profiles").select("role,first_name,last_name").eq("id", userId).maybeSingle();
+    return data || {};
+  }
   async function getRole(userId) {
-    const { data } = await supa.from("profiles").select("role").eq("id", userId).maybeSingle();
-    return data?.role || "user";
+    const p = await getProfile(userId);
+    return p.role || "user";
   }
 
   // ── Commandes utilisateur ────────────────────────────────
@@ -192,14 +179,15 @@
     if (elAuthBox)    elAuthBox.style.display = "none";
     if (elAccountBox) elAccountBox.style.display = "";
 
-    // Avatar initiale
+    // Avatar initiale (prénom > email)
+    const displayName = user?.firstName || user?.lastName || (user?.email || "?").split("@")[0];
     const avatar = document.getElementById("accountAvatar");
-    if (avatar) avatar.textContent = (user?.email || "?")[0].toUpperCase();
+    if (avatar) avatar.textContent = displayName[0].toUpperCase();
 
     // Greeting
     const greeting = document.getElementById("accountGreeting");
     if (greeting) {
-      const name = (user?.email || "").split("@")[0];
+      const name = user?.firstName || displayName;
       greeting.textContent = `Bonjour, ${name.charAt(0).toUpperCase() + name.slice(1)} !`;
     }
 
@@ -243,7 +231,7 @@
       <div class="gcCard ${isActive ? "" : "gcCard--used"}">
         <div class="gcCard__visual" style="background:${grad};">
           <div class="gcCard__visual-top">
-            <span class="gcCard__brand">Maison Cire</span>
+            <span class="gcCard__brand">Guadaluz</span>
             <span class="gcCard__amount">${Number(gc.initial_amount).toFixed(0)} €</span>
           </div>
           <div class="gcCard__label">Carte Cadeau</div>
@@ -348,9 +336,9 @@
       const { data, error } = await supa.auth.signInWithPassword({ email, password });
       if (error) throw new Error(error.message);
 
-      const token = data.session.access_token;
-      const role  = await getRole(data.user.id);
-      const user  = { email: data.user.email, role };
+      const token   = data.session.access_token;
+      const profile = await getProfile(data.user.id);
+      const user    = { email: data.user.email, role: profile.role || "user", firstName: profile.first_name, lastName: profile.last_name };
 
       setAuth(token, user);
       showLogged(user);
@@ -364,9 +352,15 @@
   // Signup
   elSignupForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email    = (elSignupEmail?.value    || "").trim().toLowerCase();
-    const password = (elSignupPassword?.value || "").trim();
+    const firstName = (document.getElementById("signupFirstName")?.value || "").trim();
+    const lastName  = (document.getElementById("signupLastName")?.value  || "").trim();
+    const email     = (elSignupEmail?.value    || "").trim().toLowerCase();
+    const password  = (elSignupPassword?.value || "").trim();
+    const phone     = (document.getElementById("signupPhone")?.value   || "").trim();
+    const address   = (document.getElementById("signupAddress")?.value || "").trim();
 
+    if (!firstName)            return setMsg(elSignupMsg, "Prénom requis.");
+    if (!lastName)             return setMsg(elSignupMsg, "Nom requis.");
     if (!email.includes("@"))  return setMsg(elSignupMsg, "Email invalide.");
     if (password.length < 6)   return setMsg(elSignupMsg, "Mot de passe trop court (min 6 caractères).");
 
@@ -378,24 +372,40 @@
       const { data, error } = await supa.auth.signUp({ email, password });
       if (error) throw new Error(error.message);
 
-      // Récupère la session — signUp() la retourne directement si
-      // "Confirm email" est désactivé dans Supabase Auth settings.
-      // Sinon on force un signIn immédiat.
-      let session = data.session;
-      if (!session) {
-        const { data: loginData, error: loginErr } = await supa.auth.signInWithPassword({ email, password });
-        if (loginErr) throw new Error(loginErr.message);
-        session = loginData.session;
+      // Email déjà utilisé : Supabase renvoie identities=[] au lieu d'une erreur
+      if (data.user && (!data.user.identities || data.user.identities.length === 0)) {
+        setMsg(elSignupMsg, "❌ Un compte existe déjà avec cette adresse email. Connectez-vous ou utilisez « Mot de passe oublié ».", "error");
+        if (btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
+        return;
       }
 
-      if (!session) throw new Error("Impossible de créer la session. Réessayez.");
+      // Cas 1 : confirmation email requise → pas de session
+      if (!data.session) {
+        setMsg(elSignupMsg,
+          "✅ Un email de confirmation a été envoyé à " + email + ". Veuillez cliquer sur le lien pour activer votre compte.",
+          "success"
+        );
+        if (btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
+        return;
+      }
+
+      // Cas 2 : confirmation désactivée → session immédiate
+      const session = data.session;
+
+      // Sauvegarder les infos du profil
+      await supa.from("profiles").update({
+        first_name: firstName,
+        last_name:  lastName,
+        phone:      phone  || null,
+        address:    address || null,
+      }).eq("id", session.user.id);
 
       const role = await getRole(session.user.id);
-      const user = { email: session.user.email, role };
+      const user = { email: session.user.email, role, firstName };
       setAuth(session.access_token, user);
       showLogged(user);
     } catch (err) {
-      setMsg(elSignupMsg, "❌ " + (err?.message || "Erreur création compte."));
+      setMsg(elSignupMsg, "❌ " + (err?.message || "Erreur création compte."), "error");
       if (btn) { btn.disabled = false; btn.textContent = "Créer mon compte"; }
     }
   });
@@ -520,8 +530,8 @@
       const { data: { session } } = await supa.auth.getSession();
 
       if (session?.access_token) {
-        const role = await getRole(session.user.id);
-        const user = { email: session.user.email, role };
+        const profile = await getProfile(session.user.id);
+        const user = { email: session.user.email, role: profile.role || "user", firstName: profile.first_name, lastName: profile.last_name };
         setAuth(session.access_token, user);
         showLogged(user);
       } else {
