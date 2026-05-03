@@ -1057,7 +1057,14 @@ function computeTotals() {
 
 function renderCartBadge() {
   if (!els.cartCount) return;
-  els.cartCount.textContent = totalCartCount();
+  const prev = els.cartCount.textContent;
+  const next = String(totalCartCount());
+  els.cartCount.textContent = next;
+  if (prev !== next) {
+    els.cartCount.classList.remove("pop");
+    void els.cartCount.offsetWidth;
+    els.cartCount.classList.add("pop");
+  }
 }
 
 function formatDateFR(yyyyMmDd) {
@@ -1810,13 +1817,10 @@ els.pdpOverlay?.addEventListener("click", closePdp);
 // PDP add to cart
 els.pdpAddToCart?.addEventListener("click", () => {
   if (!currentPdpId) return;
-
   addToCart(currentPdpId, 1);
   bumpCartIcon();
-
-  // Fermer le PDP et ouvrir le panier directement
+  uiToast("Ajouté au panier ✓", "success");
   closePdp();
-  setTimeout(openCart, 120);
 });
 
 
