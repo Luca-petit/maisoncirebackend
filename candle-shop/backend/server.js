@@ -51,39 +51,37 @@ function formatEUR(n) {
   return new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(x);
 }
 
-// Construit un tableau HTML avec les articles (singles + packs)
+// Construit un tableau HTML avec les articles (singles + packs + gift cards)
 async function buildOrderItemsHtml(cart) {
-  const skus = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object")
-    ? cart.skus
-    : {};
-  const packs = Array.isArray(cart?.packs) ? cart.packs : [];
+  const skus      = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object") ? cart.skus : {};
+  const packs     = Array.isArray(cart?.packs)     ? cart.packs     : [];
+  const giftcards = Array.isArray(cart?.giftcards) ? cart.giftcards : [];
+
+  console.log("📦 buildOrderItemsHtml — skus:", JSON.stringify(skus), "| packs:", packs.length, "| giftcards:", giftcards.length);
 
   const ids = new Set();
-
-  // singles
   for (const pid of Object.keys(skus)) ids.add(String(pid));
-
-  // packs
   for (const pack of packs) {
     for (const it of (Array.isArray(pack?.items) ? pack.items : [])) {
       if (it?.id) ids.add(String(it.id));
     }
   }
 
-  // rien à afficher
-  if (ids.size === 0) {
+  if (ids.size === 0 && packs.length === 0 && giftcards.length === 0) {
     return `<p style="margin:0;color:#666;">Aucun article.</p>`;
   }
 
-  // charge les produits concernés
-  const { data: prods, error } = await supabase
-    .from("products")
-    .select("id,name,price")
-    .in("id", Array.from(ids));
-
-  if (error) throw error;
-
-  const byId = Object.fromEntries((prods || []).map(p => [String(p.id), p]));
+  // Récupérer les noms/prix depuis Supabase (seulement si nécessaire)
+  let byId = {};
+  if (ids.size > 0) {
+    try {
+      const { data: prods } = await supabase
+        .from("products")
+        .select("id,name,price")
+        .in("id", Array.from(ids));
+      byId = Object.fromEntries((prods || []).map(p => [String(p.id), p]));
+    } catch (_) { /* fallback : on affichera les IDs comme noms */ }
+  }
 
   let rows = "";
 
@@ -146,6 +144,34 @@ async function buildOrderItemsHtml(cart) {
         </td>
         <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
           ${escapeHtml(formatEUR(packTotal))}
+        </td>
+      </tr>
+    `;
+  }
+
+  // gift cards rows
+  for (const gc of giftcards) {
+    const amount = Number(gc?.amount || 0);
+    const to     = escapeHtml(String(gc?.receiver || "—"));
+    const color  = escapeHtml(String(gc?.color || "ambre"));
+    const date   = gc?.sendDate ? escapeHtml(String(gc.sendDate)) : "À la confirmation";
+
+    rows += `
+      <tr>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;">
+          <strong>🎁 Carte cadeau</strong>
+          <div style="margin-top:4px;color:#666;font-size:12px;line-height:1.4;">
+            Pour : ${to}<br>
+            Couleur : ${color}<br>
+            Envoi : ${date}
+          </div>
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">1</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(amount))}
+        </td>
+        <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:right;">
+          ${escapeHtml(formatEUR(amount))}
         </td>
       </tr>
     `;

@@ -220,6 +220,7 @@
         (document.getElementById("adminAuth").style.display = "none");
       document.getElementById("adminPanel")?.classList.remove("hidden");
       window.loadAdminOrders?.();
+      window.loadAdminPendingTestimonials?.();
     }
   }
 

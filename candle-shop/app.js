@@ -239,6 +239,17 @@ async function loadAdminOrders() {
         : status !== "termine";     // mode normal
     });
 
+    // Badge sur l'onglet
+    const badge = document.getElementById("dashCommandesBadge");
+    if (badge) {
+      if (!showFinishedOrders && orders.length > 0) {
+        badge.textContent = String(orders.length);
+        badge.style.display = "";
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
     if (!orders.length) {
       els.adminOrdersMsg && (els.adminOrdersMsg.textContent =
         showFinishedOrders ? "Aucune commande terminée." : "Aucune commande."
