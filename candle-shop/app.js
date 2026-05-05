@@ -1858,6 +1858,33 @@ els.pdpNotifyEmail?.addEventListener("input", () => {
 els.pdpClose?.addEventListener("click", closePdp);
 els.pdpOverlay?.addEventListener("click", closePdp);
 
+// Lightbox photo
+document.getElementById("pdpImg")?.addEventListener("click", () => {
+  const src = document.getElementById("pdpImg")?.src;
+  if (!src) return;
+  const lb = document.getElementById("imgLightbox");
+  const lbImg = document.getElementById("imgLightboxImg");
+  if (!lb || !lbImg) return;
+  lbImg.src = src;
+  lb.classList.add("open");
+  document.body.style.overflow = "hidden";
+});
+document.getElementById("imgLightbox")?.addEventListener("click", () => {
+  document.getElementById("imgLightbox")?.classList.remove("open");
+  document.body.style.overflow = "";
+});
+document.getElementById("imgLightboxClose")?.addEventListener("click", e => {
+  e.stopPropagation();
+  document.getElementById("imgLightbox")?.classList.remove("open");
+  document.body.style.overflow = "";
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    document.getElementById("imgLightbox")?.classList.remove("open");
+    document.body.style.overflow = "";
+  }
+});
+
 // PDP add to cart
 els.pdpAddToCart?.addEventListener("click", () => {
   if (!currentPdpId) return;
