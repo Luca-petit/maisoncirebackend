@@ -831,8 +831,6 @@ const canAdd = leftForCart > 0;
       </div>
 
       <div class="productBody">
-        <h3>${escapeHTML(p.name)}</h3>
-
         <div class="productFooter">
           <span class="price">${formatEUR(p.price)}</span>
         </div>
@@ -892,7 +890,7 @@ if (els.pdpNotifyToggle) {
 }
 
 
-  if (els.pdpTitle) els.pdpTitle.textContent = p.name;
+  if (els.pdpTitle) els.pdpTitle.textContent = "";
   if (els.pdpPrice) els.pdpPrice.textContent = formatEUR(p.price);
   if (els.pdpDescription) els.pdpDescription.textContent = p.description || "";
   if (els.pdpStock) els.pdpStock.textContent = left > 0 ? `${left} en stock` : "Rupture";
@@ -1094,9 +1092,10 @@ function renderCart() {
       const item = document.createElement("div");
       item.className = "cartItem";
       item.innerHTML = `
-        <div>
-          <h4>${escapeHTML(p.name)}</h4>
-          <p>${qty} pièce(s) · ${free} offert(s) → ${payable} payée(s)</p>
+        <div class="cartItem__img">
+          ${p.image ? `<img src="${escapeHTML(p.image)}" alt="" />` : ""}
+        </div>
+        <div class="cartItem__info">
           <p>${formatEUR(p.price)} / unité</p>
         </div>
         <div class="qty" aria-label="Quantité">
@@ -1492,15 +1491,64 @@ function msg(el, text) {
 }
 
 function renderAdminSelect() {
-  if (!els.adminSelect) return;
-  els.adminSelect.innerHTML = "";
-
-  for (const p of products) {
-    const opt = document.createElement("option");
-    opt.value = p.id;
-    opt.textContent = p.name;
-    els.adminSelect.appendChild(opt);
+  // Sync hidden select
+  if (els.adminSelect) {
+    els.adminSelect.innerHTML = "";
+    for (const p of products) {
+      const opt = document.createElement("option");
+      opt.value = p.id;
+      opt.textContent = p.name;
+      els.adminSelect.appendChild(opt);
+    }
   }
+
+  // Grille d'images
+  const grid = document.getElementById("adminProductGrid");
+  if (!grid) return;
+  const current = els.adminSelect?.value || "";
+  grid.innerHTML = products.map(p => `
+    <div class="adminThumb ${p.id === current ? "is-selected" : ""}" data-thumb-id="${p.id}">
+      ${p.image
+        ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" />`
+        : `<div class="adminThumb__placeholder">?</div>`
+      }
+      <button class="adminThumb__del" data-del-id="${p.id}" title="Supprimer" type="button">✕</button>
+    </div>
+  `).join("");
+
+  grid.querySelectorAll("[data-thumb-id]").forEach(el => {
+    el.addEventListener("click", e => {
+      if (e.target.closest("[data-del-id]")) return;
+      const id = el.dataset.thumbId;
+      if (els.adminSelect) { els.adminSelect.value = id; els.adminSelect.dispatchEvent(new Event("change")); }
+      grid.querySelectorAll(".adminThumb").forEach(t => t.classList.remove("is-selected"));
+      el.classList.add("is-selected");
+    });
+  });
+
+  grid.querySelectorAll("[data-del-id]").forEach(btn => {
+    btn.addEventListener("click", async e => {
+      e.stopPropagation();
+      const id = btn.dataset.delId;
+      const p = getProduct(id);
+      if (!confirm(`Supprimer "${p?.name}" ?`)) return;
+      try {
+        await apiFetch(`/api/admin/products/${encodeURIComponent(id)}`, {
+          method: "DELETE", headers: { "x-admin-key": getAdminKey() },
+        });
+        products = await apiLoadProducts();
+        renderAdminSelect();
+        renderProducts();
+        if (products[0] && els.adminSelect) {
+          els.adminSelect.value = products[0].id;
+          loadAdminFields(products[0].id);
+        }
+        msg(els.adminSaveMsg, "Produit supprimé ✅");
+      } catch (err) {
+        msg(els.adminSaveMsg, "❌ " + (err?.message || "Erreur suppression"));
+      }
+    });
+  });
 }
 
 function loadAdminFields(productId) {
@@ -2169,20 +2217,15 @@ adminAdd.form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (!adminAdd.msg) return;
 
-  const name = (adminAdd.name?.value || "").trim();
-  const base = slugify(name);
+  const name = `bijou-${Date.now()}`;
   const existing = new Set((products || []).map(p => p.id));
-  const id = makeUniqueId(base, existing);
-  if (adminAdd.id) adminAdd.id.value = id; // garde cohérence
+  const id = makeUniqueId(name, existing);
+  if (adminAdd.id) adminAdd.id.value = id;
+  if (adminAdd.name) adminAdd.name.value = name;
   const price = Number(adminAdd.price?.value || 0);
   const stock = Number(adminAdd.stock?.value || 0);
   const image = (adminAdd.image?.value || "").trim();
   const description = (adminAdd.description?.value || "").trim();
-
-  if (!id || !name) {
-    adminAdd.msg.textContent = "ID et nom requis.";
-    return;
-  }
 
   adminAdd.msg.textContent = "Création...";
   try {

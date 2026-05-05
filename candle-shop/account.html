@@ -255,17 +255,14 @@
                 <h3 class="dashCard__title">Modifier un produit</h3>
                 <p class="tiny muted">Sélectionne, modifie, puis sauvegarde.</p>
               </div>
-              <div class="dashCard__controls">
-                <select id="adminSelect" class="input" style="min-width:200px;"></select>
-                <button id="adminDelete" class="btn btn--danger" type="button">Supprimer</button>
-              </div>
+              <select id="adminSelect" style="display:none;"></select>
+              <button id="adminDelete" style="display:none;" type="button"></button>
             </div>
 
+            <div id="adminProductGrid" class="adminProductGrid"></div>
+
             <div class="adminForm">
-              <label class="label">
-                Nom du produit
-                <input id="adminName" type="text" placeholder="Bougie Vanille" />
-              </label>
+              <input id="adminName" type="hidden" />
               <label class="label">
                 Prix (€)
                 <input id="adminPrice" type="number" step="0.01" min="0" placeholder="18.90" />
@@ -371,10 +368,7 @@
             <input id="adminAddId" />
             <small class="tiny muted">Sans espace, ex: "bougie-vanille".</small>
           </label>
-          <label class="field">
-            <span>Nom *</span>
-            <input id="adminAddName" required placeholder="Bougie Vanille" />
-          </label>
+          <input id="adminAddName" type="hidden" />
           <label class="field">
             <span>Prix (€) *</span>
             <input id="adminAddPrice" type="number" step="0.01" min="0" required placeholder="18.90" />
