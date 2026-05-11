@@ -127,7 +127,10 @@ function renderOrderDetail(order) {
 
   const linesSingles = Object.entries(skus).map(([pid, qty]) => {
     const p = products.find(x => x.id === pid);
-    return `<li>${escapeHTML(p?.name || pid)} ×${qty}</li>`;
+    const imgHtml = p?.image
+      ? `<img src="${escapeHTML(p.image)}" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
+      : `<div style="width:54px;height:54px;background:#eee;border-radius:8px;flex-shrink:0;"></div>`;
+    return `<li style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">${imgHtml}<span>${escapeHTML(p?.name || pid)} ×${qty}</span></li>`;
   }).join("");
 
   const linesPacks = packs.map(pack => {
@@ -135,7 +138,12 @@ function renderOrderDetail(order) {
       const p = products.find(x => x.id === it.id);
       return `${p?.name || it.id} ×${it.qty}`;
     }).join(" · ");
-    return `<li><strong>${escapeHTML(pack.name || "Pack")}</strong> — ${escapeHTML(items)}</li>`;
+    const firstItem = (pack.items || [])[0];
+    const firstProduct = firstItem ? products.find(x => x.id === firstItem.id) : null;
+    const imgHtml = firstProduct?.image
+      ? `<img src="${escapeHTML(firstProduct.image)}" alt="" style="width:54px;height:54px;object-fit:cover;border-radius:8px;flex-shrink:0;">`
+      : `<div style="width:54px;height:54px;background:#eee;border-radius:8px;flex-shrink:0;"></div>`;
+    return `<li style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">${imgHtml}<span><strong>${escapeHTML(pack.name || "Pack")}</strong> — ${escapeHTML(items)}</span></li>`;
   }).join("");
 
   const linesGc = giftcards.map(gc => {

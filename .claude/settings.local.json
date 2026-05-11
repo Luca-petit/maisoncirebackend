@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(Get-Content \"c:\\\\Users\\\\Joseph\\\\Desktop\\\\candle-shop-backend-supabase-fixed\\\\candle-shop\\\\styles.css\")",
-      "Bash(Measure-Object -Line)"
+      "Bash(Measure-Object -Line)",
+      "Bash(cd \"/c/Users/Joseph/Desktop/candle-shop-backend-supabase-fixed/candle-shop\" && find . -type f \\\\\\( -name \"*.js\" -o -name \"*.ts\" -o -name \"*.jsx\" -o -name \"*.tsx\" \\\\\\) | sort)",
+      "Read(//c/c/Users/Joseph/Desktop/candle-shop-backend-supabase-fixed/**)"
     ]
   }
 }

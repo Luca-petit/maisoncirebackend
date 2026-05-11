@@ -125,6 +125,104 @@
     return `<span class="orderStatus orderStatus--${cls}">${label}</span>`;
   }
 
+  let _userProductsMap = null;
+  async function getProductsMap() {
+    if (_userProductsMap) return _userProductsMap;
+    try {
+      const res = await fetch(`${API_BASE}/api/products`);
+      const data = await res.json().catch(() => ({}));
+      const list = Array.isArray(data?.products) ? data.products : [];
+      _userProductsMap = Object.fromEntries(list.map(p => [String(p.id), p]));
+    } catch (_) { _userProductsMap = {}; }
+    return _userProductsMap;
+  }
+
+  function openUserOrderDetail(order, productsMap) {
+    const existing = document.getElementById("userOrderDetailOverlay");
+    if (existing) existing.remove();
+
+    const cart      = order.cart || {};
+    const skus      = cart.skus && typeof cart.skus === "object" ? cart.skus : {};
+    const packs     = Array.isArray(cart.packs) ? cart.packs : [];
+    const giftcards = Array.isArray(cart.giftcards) ? cart.giftcards : [];
+    const idShort   = String(order.id || "").slice(0, 8).toUpperCase();
+    const delivery  = order.delivery_mode === "shipping" ? "Envoi à domicile" : "Retrait en magasin";
+    const payment   = order.payment_mode  === "cash"     ? "Cash"             : "Virement";
+
+    const itemRows = [
+      ...Object.entries(skus).map(([pid, qty]) => {
+        const p = productsMap[pid] || {};
+        const imgHtml = p.image
+          ? `<img src="${p.image}" alt="${p.name || ""}" class="uod-item__img">`
+          : `<div class="uod-item__placeholder">🕯️</div>`;
+        return `<div class="uod-item">
+          ${imgHtml}
+          <div class="uod-item__info">
+            <div class="uod-item__name">${p.name || pid}</div>
+            <div class="uod-item__sub">×${qty}${p.price ? " · " + formatEUR(Number(p.price) * Number(qty)) : ""}</div>
+          </div>
+        </div>`;
+      }),
+      ...packs.map(pack => {
+        const firstItem = (pack.items || [])[0];
+        const firstP = firstItem ? (productsMap[firstItem.id] || {}) : {};
+        const imgHtml = firstP.image
+          ? `<img src="${firstP.image}" alt="" class="uod-item__img">`
+          : `<div class="uod-item__placeholder">🎁</div>`;
+        const subItems = (pack.items || []).map(it => {
+          const p = productsMap[it.id] || {};
+          return `${p.name || it.id} ×${it.qty}`;
+        }).join(" · ");
+        return `<div class="uod-item">
+          ${imgHtml}
+          <div class="uod-item__info">
+            <div class="uod-item__name">${pack.name || "Pack"}</div>
+            <div class="uod-item__sub">${subItems}${pack.total ? " · " + formatEUR(pack.total) : ""}</div>
+          </div>
+        </div>`;
+      }),
+      ...giftcards.map(gc => `<div class="uod-item">
+          <div class="uod-item__placeholder">🎁</div>
+          <div class="uod-item__info">
+            <div class="uod-item__name">Carte cadeau ${formatEUR(gc.amount)}</div>
+            <div class="uod-item__sub">Pour : ${gc.receiver || "—"}</div>
+          </div>
+        </div>`),
+    ].join("");
+
+    const overlay = document.createElement("div");
+    overlay.id = "userOrderDetailOverlay";
+    overlay.className = "uod-overlay";
+    overlay.innerHTML = `
+      <div class="uod-panel">
+        <div class="uod-panel__header">
+          <h3 class="uod-panel__title">Commande #${idShort}</h3>
+          <button id="userOrderDetailClose" class="uod-close" aria-label="Fermer">✕</button>
+        </div>
+
+        <div class="uod-status">${orderStatusBadge(order.status)}</div>
+
+        <div class="uod-meta">
+          <p class="uod-date">${formatDate(order.created_at)}</p>
+          <p><strong>Livraison :</strong> ${delivery}</p>
+          <p><strong>Paiement :</strong> ${payment}</p>
+          <div class="uod-total-line">
+            <span>Total payé</span>
+            <span class="uod-total-value">${formatEUR(order.total)}</span>
+          </div>
+        </div>
+
+        <p class="uod-section-label">Articles</p>
+        <div class="uod-items">
+          ${itemRows || '<p style="color:var(--muted);">Aucun article.</p>'}
+        </div>
+      </div>`;
+
+    overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector("#userOrderDetailClose").addEventListener("click", () => overlay.remove());
+    document.body.appendChild(overlay);
+  }
+
   async function loadMyOrders() {
     if (!elMyOrdersSection || !elMyOrdersList) return;
     const emptyEl = document.getElementById("myOrdersEmpty");
@@ -134,11 +232,14 @@
 
     try {
       const token = getToken();
-      const res  = await fetch(`${API_BASE}/api/account/orders`, {
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+      const [ordersRes, productsMap] = await Promise.all([
+        fetch(`${API_BASE}/api/account/orders`, {
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        }),
+        getProductsMap(),
+      ]);
+      const data = await ordersRes.json().catch(() => ({}));
+      if (!ordersRes.ok) throw new Error(data?.error || `HTTP ${ordersRes.status}`);
 
       const orders = data?.orders || [];
 
@@ -150,7 +251,7 @@
 
       setMsg(elMyOrdersMsg, `${orders.length} commande${orders.length > 1 ? "s" : ""}`);
 
-      elMyOrdersList.innerHTML = orders.map(o => {
+      elMyOrdersList.innerHTML = orders.map((o, i) => {
         const count    = Number(o.items_count || 0);
         const delivery = o.delivery_mode === "shipping" ? "🚚 Envoi" : "🏪 Retrait";
         const payment  = o.payment_mode  === "cash"     ? "💵 Cash"  : "🏦 Virement";
@@ -158,7 +259,7 @@
         const idShort  = String(o.id || "").slice(0, 8).toUpperCase();
 
         return `
-          <div class="orderCard">
+          <div class="orderCard" data-order-idx="${i}" style="cursor:pointer;">
             <div class="orderCard__head">
               <span class="orderCard__id">#${idShort}</span>
               ${orderStatusBadge(o.status)}
@@ -172,8 +273,16 @@
               </div>
               <strong class="orderCard__total">${formatEUR(o.total)}</strong>
             </div>
+            <div class="orderCard__cta">Voir le détail →</div>
           </div>`;
       }).join("");
+
+      elMyOrdersList.addEventListener("click", e => {
+        const card = e.target.closest("[data-order-idx]");
+        if (!card) return;
+        const idx = Number(card.dataset.orderIdx);
+        openUserOrderDetail(orders[idx], productsMap);
+      });
 
     } catch (e) {
       setMsg(elMyOrdersMsg, "❌ " + (e?.message || "Erreur chargement"));
@@ -353,8 +462,12 @@
       if (error) throw new Error(error.message);
 
       const token   = data.session.access_token;
-      const profile = await getProfile(data.user.id);
-      const user    = { email: data.user.email, role: profile.role || "user", firstName: profile.first_name, lastName: profile.last_name };
+      const [profile, backendRole] = await Promise.all([
+        getProfile(data.user.id),
+        getRoleFromBackend(token),
+      ]);
+      const role = backendRole || profile.role || "user";
+      const user    = { email: data.user.email, role, firstName: profile.first_name, lastName: profile.last_name };
 
       setAuth(token, user);
       showLogged(user);

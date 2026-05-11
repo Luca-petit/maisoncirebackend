@@ -761,6 +761,7 @@ try {
     html: orderConfirmationEmail({
       orderId: shortId(data.id),
       total: Number(total || 0).toFixed(2),
+      gcDiscount: Number(req.body?.gift_card_discount || 0) || 0,
       deliveryLabel,
       paymentLabel,
       itemsHtml,
