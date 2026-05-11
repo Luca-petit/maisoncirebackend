@@ -1,3 +1,7 @@
+function esc(s) {
+  return String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, paymentLabel,itemsHtml }) {
   return `<!doctype html>
 <html>
@@ -8,7 +12,7 @@ export function adminNewOrderEmail({ orderId, email, total, deliveryLabel, payme
         <p style="margin:0 0 14px;color:#555;">Commande <strong>#${orderId}</strong></p>
 
         <div style="background:#f3f4f8;border-radius:12px;padding:14px;">
-          <p style="margin:0 0 8px;"><strong>Client :</strong> ${email}</p>
+          <p style="margin:0 0 8px;"><strong>Client :</strong> ${esc(email)}</p>
           <p style="margin:0 0 8px;">${itemsHtml || ""}</p>
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
           <p style="margin:0;"><strong>Paiement :</strong> ${paymentLabel}</p>

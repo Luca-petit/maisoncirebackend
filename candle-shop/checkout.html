@@ -26,6 +26,9 @@
       <h3>Informations</h3>
 
       <form id="checkoutForm" style="display:grid;gap:10px;margin-top:12px;">
+        <!-- honeypot : invisible pour les humains, rempli par les bots -->
+        <input id="coWebsite" name="website" type="text" tabindex="-1" autocomplete="off"
+          style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;" aria-hidden="true" />
         <input id="coEmail" type="email" placeholder="Email" required />
         <input id="coPhone" type="tel" placeholder="Téléphone (optionnel)" />
 

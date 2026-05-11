@@ -341,6 +341,7 @@
         total:              Math.max(0, total - gcDiscount),
         gift_card_code:     appliedGcCode     || undefined,
         gift_card_discount: gcDiscount        || undefined,
+        website:            document.getElementById("coWebsite")?.value || "",
         status: "preparation",
       };
 

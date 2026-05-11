@@ -33,6 +33,49 @@ function ok(res, payload) {
 function bad(res, status, message) {
   return res.status(status).json({ error: message });
 }
+
+// ---------- Anti-spam commandes ----------
+const _orderRateLimits = new Map(); // key -> { count, resetAt }
+const ORDER_MAX       = 4;
+const ORDER_WINDOW_MS = 60 * 60 * 1000; // 1 heure
+
+// Nettoyage toutes les 30 min pour éviter une fuite mémoire
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, entry] of _orderRateLimits) {
+    if (now > entry.resetAt) _orderRateLimits.delete(key);
+  }
+}, 30 * 60 * 1000);
+
+function getClientIp(req) {
+  return (req.headers["x-forwarded-for"] || "").split(",")[0].trim()
+    || req.socket?.remoteAddress
+    || "unknown";
+}
+
+function checkOrderRateLimit(req) {
+  const email = normalizeEmail(req.body?.email || "");
+  const ip    = getClientIp(req);
+  const keys  = [`email:${email}`, `ip:${ip}`];
+  const now   = Date.now();
+
+  // Phase 1 : vérifier AVANT d'incrémenter (évite de consommer le quota sur un rejet)
+  for (const key of keys) {
+    const entry = _orderRateLimits.get(key);
+    if (entry && now <= entry.resetAt && entry.count >= ORDER_MAX) return false;
+  }
+
+  // Phase 2 : incrémenter seulement si les deux clés passent
+  for (const key of keys) {
+    const entry = _orderRateLimits.get(key);
+    if (!entry || now > entry.resetAt) {
+      _orderRateLimits.set(key, { count: 1, resetAt: now + ORDER_WINDOW_MS });
+    } else {
+      entry.count++;
+    }
+  }
+  return true;
+}
 function normalizeEmail(email) {
   return String(email || "").trim().toLowerCase();
 }
@@ -635,6 +678,12 @@ app.post("/api/checkout/:sessionId", async (req, res) => {
 });
 
 app.post("/api/orders", async (req, res) => {
+  if (!checkOrderRateLimit(req)) {
+    return bad(res, 429, "Trop de commandes envoyées. Veuillez réessayer dans une heure.");
+  }
+  // Honeypot : un humain ne remplit jamais ce champ
+  if (req.body?.website) return bad(res, 400, "Requête invalide");
+
   try {
     const session_id = String(req.body?.session_id || "").trim();
     const email = normalizeEmail(req.body?.email);
@@ -653,9 +702,52 @@ app.post("/api/orders", async (req, res) => {
         : "preparation";
 
 
-    const total = Number(req.body?.total || 0) || 0;
     if (!email || !email.includes("@")) return bad(res, 400, "Email invalide");
     if (!cart || typeof cart !== "object") return bad(res, 400, "Panier invalide");
+
+    // Panier vide = rejet immédiat
+    const cartSkus  = cart?.skus && typeof cart.skus === "object" ? cart.skus : {};
+    const cartPacks = Array.isArray(cart?.packs) ? cart.packs : [];
+    const cartGcs   = Array.isArray(cart?.giftcards) ? cart.giftcards : [];
+    const cartIsEmpty = !Object.keys(cartSkus).length && !cartPacks.length && !cartGcs.length;
+    if (cartIsEmpty) return bad(res, 400, "Panier vide");
+
+    // Vérifier que le session_id est un vrai panier créé depuis le site (anti-bot)
+    if (session_id) {
+      const { data: cartRow } = await supabase
+        .from("carts").select("session_id").eq("session_id", session_id).maybeSingle();
+      if (!cartRow) return bad(res, 403, "Session invalide");
+    } else {
+      return bad(res, 403, "Session manquante");
+    }
+
+    // Recalcul du total côté serveur (prix depuis la DB — le client ne peut pas tricher)
+    let serverTotal = 0;
+    const allProductIds = [
+      ...Object.keys(cartSkus),
+      ...cartPacks.flatMap(p => (p.items || []).map(it => it.id)),
+    ].filter(Boolean);
+
+    if (allProductIds.length) {
+      const { data: priceRows } = await supabase
+        .from("products").select("id,price").in("id", allProductIds);
+      const priceMap = Object.fromEntries((priceRows || []).map(p => [p.id, Number(p.price || 0)]));
+
+      for (const [pid, qty] of Object.entries(cartSkus)) {
+        serverTotal += (priceMap[pid] || 0) * Math.max(0, Math.floor(Number(qty) || 0));
+      }
+      for (const pack of cartPacks) {
+        serverTotal += Number(pack.total ?? pack.value ?? 0);
+      }
+    }
+    for (const gc of cartGcs) serverTotal += Number(gc.amount || 0);
+    serverTotal += delivery_fee;
+
+    // Appliquer la remise carte cadeau si fournie
+    const gcDiscountReq = Math.max(0, Number(req.body?.gift_card_discount || 0));
+    if (gcDiscountReq > 0) serverTotal = Math.max(0, serverTotal - gcDiscountReq);
+
+    const total = Math.round(serverTotal * 100) / 100;
 
         // --- Build toDec (singles + packs) pour décrément ATOMIQUE ---
     const skus      = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object") ? cart.skus : {};

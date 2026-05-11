@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Guadaluz — Informations légales</title>
+  <meta name="description" content="CGV, mentions légales et politique de confidentialité de Guadaluz." />
+  <link rel="stylesheet" href="styles.css" />
+  <script>window.__API_BASE__ = "https://backendmaisoncire.onrender.com";</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    .legal-nav {
+      display: flex; gap: 8px; flex-wrap: wrap;
+      margin-bottom: 36px;
+    }
+    .legal-nav__btn {
+      padding: 8px 20px; border-radius: 999px;
+      border: 1.5px solid rgba(45,31,31,.15);
+      background: var(--surface); color: var(--muted);
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 200ms ease;
+    }
+    .legal-nav__btn:hover { border-color: var(--brand); color: var(--brand); }
+    .legal-nav__btn.is-active {
+      background: var(--brand); color: #fff; border-color: var(--brand);
+    }
+    .legal-section { display: none; }
+    .legal-section.is-visible { display: block; }
+    .legal-section h2 {
+      font-size: 22px; font-weight: 800; letter-spacing: -.02em;
+      margin: 0 0 24px; padding-bottom: 16px;
+      border-bottom: 2px solid var(--brand-light);
+    }
+    .legal-section h3 {
+      font-size: 15px; font-weight: 700; margin: 28px 0 8px;
+      color: var(--brand);
+    }
+    .legal-section p, .legal-section li {
+      font-size: 14px; line-height: 1.75; color: var(--muted);
+    }
+    .legal-section ul { padding-left: 20px; margin: 8px 0; }
+    .legal-section li { margin-bottom: 4px; }
+    .legal-card {
+      background: var(--surface);
+      border: 1px solid rgba(45,31,31,.08);
+      border-radius: var(--r-lg);
+      padding: 32px;
+      max-width: 760px;
+      box-shadow: var(--shadow-xs);
+    }
+    @media (max-width: 480px) {
+      .legal-card { padding: 20px 16px; }
+      .legal-section h2 { font-size: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <header class="header" id="header">
+    <div class="header__inner">
+      <a href="index.html" class="logo">Guadaluz</a>
+      <nav class="nav" id="nav">
+        <a href="index.html">Boutique</a>
+        <a href="account.html">Mon compte</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section">
+      <div class="section__head">
+        <h1 style="font-size:clamp(24px,4vw,38px);font-weight:900;letter-spacing:-.03em;margin:0 0 8px;">Informations légales</h1>
+        <p class="muted" style="font-size:14px;">Dernière mise à jour : mai 2025</p>
+      </div>
+
+      <nav class="legal-nav">
+        <button class="legal-nav__btn is-active" data-section="cgv">CGV</button>
+        <button class="legal-nav__btn" data-section="mentions">Mentions légales</button>
+        <button class="legal-nav__btn" data-section="confidentialite">Confidentialité</button>
+      </nav>
+
+      <div class="legal-card">
+
+        <!-- CGV -->
+        <div class="legal-section is-visible" id="legal-cgv">
+          <h2>Conditions Générales de Vente</h2>
+
+          <h3>1. Objet</h3>
+          <p>Les présentes conditions générales de vente s'appliquent à toutes les commandes passées sur le site Guadaluz. En passant une commande, vous acceptez sans réserve les présentes CGV.</p>
+
+          <h3>2. Produits</h3>
+          <p>Les bijoux proposés sur Guadaluz sont des créations artisanales. Des légères variations de couleur ou de forme peuvent exister entre les photos et les produits réels — c'est la beauté du fait main. Les stocks étant limités, Guadaluz se réserve le droit d'annuler une commande en cas d'indisponibilité.</p>
+
+          <h3>3. Prix</h3>
+          <p>Les prix sont indiqués en euros TTC. Guadaluz se réserve le droit de modifier ses tarifs à tout moment. Le prix applicable est celui affiché au moment de la validation de la commande.</p>
+
+          <h3>4. Commandes</h3>
+          <p>La commande est confirmée dès réception de l'email de confirmation. En cas d'erreur dans les informations saisies, contactez-nous au plus vite à l'adresse indiquée dans la section Mentions légales.</p>
+
+          <h3>5. Modes de livraison</h3>
+          <ul>
+            <li><strong>Retrait en magasin :</strong> gratuit, sur rendez-vous à l'adresse communiquée par email.</li>
+            <li><strong>Envoi à domicile :</strong> expédition sous 3 à 5 jours ouvrés après confirmation du paiement.</li>
+          </ul>
+
+          <h3>6. Paiement</h3>
+          <ul>
+            <li><strong>Virement bancaire :</strong> les coordonnées IBAN sont communiquées dans l'email de confirmation. La commande est traitée dès réception du virement.</li>
+            <li><strong>Cash :</strong> uniquement pour les retraits en magasin, à régler lors du retrait.</li>
+          </ul>
+
+          <h3>7. Droit de rétractation</h3>
+          <p>Conformément à l'article L.221-18 du Code de la consommation, vous disposez d'un délai de 14 jours à compter de la réception de votre commande pour exercer votre droit de rétractation, sans avoir à justifier de motifs. Les bijoux doivent être retournés en parfait état dans leur emballage d'origine. Les frais de retour sont à la charge du client.</p>
+
+          <h3>8. Réclamations</h3>
+          <p>Pour toute réclamation, veuillez nous contacter par email. Nous nous engageons à vous répondre dans un délai de 5 jours ouvrés.</p>
+        </div>
+
+        <!-- Mentions légales -->
+        <div class="legal-section" id="legal-mentions">
+          <h2>Mentions légales</h2>
+
+          <h3>Éditeur du site</h3>
+          <p>
+            <strong>Guadaluz</strong><br>
+            Créatrice artisanale de bijoux<br>
+            Email : <a href="mailto:contact@guadaluz.fr" style="color:var(--brand);">contact@guadaluz.fr</a>
+          </p>
+
+          <h3>Hébergement</h3>
+          <p>
+            Le site est hébergé par <strong>Render</strong> (render.com) — 525 Brannan St, Suite 300, San Francisco, CA 94107, USA.
+          </p>
+
+          <h3>Propriété intellectuelle</h3>
+          <p>L'ensemble des contenus du site Guadaluz (textes, photos, illustrations, logo) sont protégés par le droit d'auteur. Toute reproduction, même partielle, est interdite sans autorisation préalable écrite.</p>
+
+          <h3>Litiges</h3>
+          <p>En cas de litige, une solution amiable sera recherchée avant tout recours judiciaire. À défaut, les tribunaux français seront seuls compétents.</p>
+        </div>
+
+        <!-- Confidentialité -->
+        <div class="legal-section" id="legal-confidentialite">
+          <h2>Politique de confidentialité</h2>
+
+          <h3>Collecte des données</h3>
+          <p>Lors d'une commande, nous collectons les informations suivantes :</p>
+          <ul>
+            <li>Adresse email</li>
+            <li>Numéro de téléphone (optionnel)</li>
+            <li>Adresse de livraison (si envoi à domicile)</li>
+          </ul>
+          <p>Ces données sont utilisées exclusivement pour le traitement de votre commande et la communication relative à celle-ci.</p>
+
+          <h3>Durée de conservation</h3>
+          <p>Vos données de commande sont conservées pendant 3 ans à compter de la date de commande, conformément aux obligations légales en matière de comptabilité.</p>
+
+          <h3>Vos droits (RGPD)</h3>
+          <p>Conformément au Règlement Général sur la Protection des Données (RGPD), vous disposez des droits suivants :</p>
+          <ul>
+            <li>Droit d'accès à vos données personnelles</li>
+            <li>Droit de rectification</li>
+            <li>Droit à l'effacement (« droit à l'oubli »)</li>
+            <li>Droit à la limitation du traitement</li>
+            <li>Droit à la portabilité des données</li>
+          </ul>
+          <p>Pour exercer ces droits, contactez-nous à : <a href="mailto:contact@guadaluz.fr" style="color:var(--brand);">contact@guadaluz.fr</a></p>
+
+          <h3>Cookies</h3>
+          <p>Le site utilise uniquement des données de stockage local (localStorage) pour la gestion du panier et de la session. Aucun cookie de tracking ou publicitaire n'est déposé sur votre appareil.</p>
+
+          <h3>Sous-traitants</h3>
+          <p>Guadaluz fait appel aux sous-traitants suivants pour faire fonctionner le service :</p>
+          <ul>
+            <li><strong>Supabase</strong> — base de données et authentification</li>
+            <li><strong>Render</strong> — hébergement backend</li>
+            <li><strong>Resend</strong> — envoi des emails transactionnels</li>
+          </ul>
+          <p>Chacun de ces sous-traitants est soumis à ses propres politiques de confidentialité conformes au RGPD.</p>
+        </div>
+
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__inner">
+      <div class="muted">© <span id="year"></span> Guadaluz</div>
+      <div class="footer__links">
+        <a href="legal.html#cgv">CGV</a>
+        <a href="legal.html#mentions">Mentions légales</a>
+        <a href="legal.html#confidentialite">Confidentialité</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.getElementById("year").textContent = new Date().getFullYear();
+
+    // Tab navigation
+    const btns = document.querySelectorAll(".legal-nav__btn");
+    const sections = document.querySelectorAll(".legal-section");
+
+    btns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.section;
+        btns.forEach(b => b.classList.toggle("is-active", b === btn));
+        sections.forEach(s => s.classList.toggle("is-visible", s.id === "legal-" + target));
+        history.replaceState(null, "", "#" + target);
+      });
+    });
+
+    // Ouvre la section depuis le hash URL
+    const hash = location.hash.replace("#", "");
+    if (hash) {
+      const btn = document.querySelector(`[data-section="${hash}"]`);
+      if (btn) btn.click();
+    }
+  </script>
+</body>
+</html>

@@ -228,23 +228,50 @@ const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
 }
 
 
+let _adminOrdersCache = [];
+
+function renderAdminOrderRows(query) {
+  if (!els.adminOrdersList) return;
+  const q = (query || "").trim().toLowerCase().replace(/^#/, "");
+  const filtered = q
+    ? _adminOrdersCache.filter(o => shortId(o.id).toLowerCase().includes(q) || o.email?.toLowerCase().includes(q))
+    : _adminOrdersCache;
+
+  if (!filtered.length) {
+    els.adminOrdersList.innerHTML = `<p class="tiny muted" style="padding:14px 20px;">${q ? "Aucune commande trouvée." : (showFinishedOrders ? "Aucune commande terminée." : "Aucune commande.")}</p>`;
+    return;
+  }
+
+  els.adminOrdersList.innerHTML = filtered.map(o => `
+    <button type="button" class="adminOrderRow" data-admin-order-open="${o.id}">
+      <div>
+        <strong>#${shortId(o.id)}</strong>
+        <div class="tiny muted">${formatDateTimeFR(o.created_at)} · ${o.items_count} article(s)</div>
+      </div>
+      <div style="text-align:right">
+        <strong>${formatEUR(o.total)}</strong>
+        <div class="tiny muted">${o.status}</div>
+      </div>
+    </button>
+  `).join("");
+}
+
 async function loadAdminOrders() {
   if (!els.adminOrdersList) return;
 
   els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "Chargement...");
   els.adminOrdersList.innerHTML = "";
+  if (els.adminOrderSearch) els.adminOrderSearch.value = "";
 
   try {
     const data = await apiAdminLoadOrders(showFinishedOrders);
     let orders = data.orders || [];
 
-
-    // ✅ FILTRE ICI (ETAPE 3)
     orders = orders.filter(o => {
       const status = o.status || "preparation";
       return showFinishedOrders
-        ? status === "termine"      // mode archive
-        : status !== "termine";     // mode normal
+        ? status === "termine"
+        : status !== "termine";
     });
 
     // Badge sur l'onglet
@@ -258,27 +285,22 @@ async function loadAdminOrders() {
       }
     }
 
-    if (!orders.length) {
-      els.adminOrdersMsg && (els.adminOrdersMsg.textContent =
-        showFinishedOrders ? "Aucune commande terminée." : "Aucune commande."
-      );
-      return;
+    _adminOrdersCache = orders;
+
+    els.adminOrdersMsg && (els.adminOrdersMsg.textContent =
+      orders.length ? `${orders.length} commande(s)` :
+      (showFinishedOrders ? "Aucune commande terminée." : "Aucune commande.")
+    );
+
+    renderAdminOrderRows("");
+
+    // Brancher la recherche (une seule fois)
+    if (els.adminOrderSearch && !els.adminOrderSearch._bound) {
+      els.adminOrderSearch._bound = true;
+      els.adminOrderSearch.addEventListener("input", e => {
+        renderAdminOrderRows(e.target.value);
+      });
     }
-
-    els.adminOrdersMsg && (els.adminOrdersMsg.textContent = `${orders.length} commande(s)`);
-
-    els.adminOrdersList.innerHTML = orders.map(o => `
-      <button type="button" class="adminOrderRow" data-admin-order-open="${o.id}">
-        <div>
-          <strong>#${shortId(o.id)}</strong>
-          <div class="tiny muted">${formatDateTimeFR(o.created_at)} · ${o.items_count} article(s)</div>
-        </div>
-        <div style="text-align:right">
-          <strong>${formatEUR(o.total)}</strong>
-          <div class="tiny muted">${o.status}</div>
-        </div>
-      </button>
-    `).join("");
 
   } catch (e) {
     els.adminOrdersMsg && (els.adminOrdersMsg.textContent = "❌ " + (e?.message || "Erreur"));
@@ -625,9 +647,10 @@ const els = {
   gcCustomWrap: document.getElementById("gcCustomWrap"),
   gcCustomAmount: document.getElementById("gcCustomAmount"),
 
-  adminOrdersMsg: document.getElementById("adminOrdersMsg"),
-adminOrdersList: document.getElementById("adminOrdersList"),
-adminOrderDetail: document.getElementById("adminOrderDetail"),
+  adminOrdersMsg:    document.getElementById("adminOrdersMsg"),
+  adminOrdersList:   document.getElementById("adminOrdersList"),
+  adminOrderDetail:  document.getElementById("adminOrderDetail"),
+  adminOrderSearch:  document.getElementById("adminOrderSearch"),
 
 
   // PDP modal
