@@ -19,7 +19,7 @@ export function orderConfirmationEmail({
           <div style="width:10px;height:10px;border-radius:999px;background:#111;"></div>
         </div>
 
-        <h1 style="margin:18px 0 8px;font-size:22px;">Commande confirmée 🕯️</h1>
+        <h1 style="margin:18px 0 8px;font-size:22px;">Commande confirmée </h1>
         <p style="margin:0 0 12px;color:#444;line-height:1.5;">
           Merci pour votre commande. Nous vous tiendrons informé(e) à chaque étape.
         </p>

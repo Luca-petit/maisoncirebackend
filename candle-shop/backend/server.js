@@ -729,20 +729,11 @@ app.post("/api/orders", async (req, res) => {
     const cartIsEmpty = !Object.keys(cartSkus).length && !cartPacks.length && !cartGcs.length;
     if (cartIsEmpty) return bad(res, 400, "Panier vide");
 
-    // Session obligatoire
-    if (!session_id) return bad(res, 403, "Session manquante");
-
     // Session à usage unique : 1 session = 1 commande max
-    const { data: existingOrder } = await supabase
-      .from("orders").select("id").eq("session_id", session_id).maybeSingle();
-    if (existingOrder) return bad(res, 409, "Cette session a déjà été utilisée");
-
-    // Si la session existe en base, vérifier qu'elle n'est pas trop récente (anti-bot)
-    const { data: cartRow } = await supabase
-      .from("carts").select("created_at").eq("session_id", session_id).maybeSingle();
-    if (cartRow?.created_at) {
-      const sessionAgeMs = Date.now() - new Date(cartRow.created_at).getTime();
-      if (sessionAgeMs < 4000) return bad(res, 403, "Session trop récente");
+    if (session_id) {
+      const { data: existingOrder } = await supabase
+        .from("orders").select("id").eq("session_id", session_id).maybeSingle();
+      if (existingOrder) return bad(res, 409, "Cette session a déjà été utilisée");
     }
 
     // Recalcul du total côté serveur (prix depuis la DB — le client ne peut pas tricher)

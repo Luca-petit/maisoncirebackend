@@ -5,6 +5,48 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Checkout — Guadaluz</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    #checkoutForm input:not([type="checkbox"]),
+    #checkoutForm select {
+      width: 100%;
+      box-sizing: border-box;
+      height: 48px;
+      border-radius: 12px;
+      border: 1.5px solid rgba(45,31,31,.10);
+      background: rgba(45,31,31,.03);
+      padding: 0 14px;
+      font-size: 14px;
+      color: #2d1f1f;
+      outline: none;
+    }
+    #checkoutForm input:focus,
+    #checkoutForm select:focus {
+      border-color: #2d1f1f;
+      box-shadow: 0 0 0 3px rgba(45,31,31,.08);
+    }
+    #checkoutForm label {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(45,31,31,.6);
+    }
+    #coAddressWrap {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 8px;
+    }
+    #coAddrPostal, #coAddrCity {
+      grid-column: span 1;
+    }
+    @media (max-width: 480px) {
+      #coAddressWrap {
+        grid-template-columns: 1fr;
+      }
+    }
+    #coGcCode { height: 44px !important; }
+  </style>
   <script>
     window.__API_BASE__ = "https://backendmaisoncire.onrender.com";
   </script>
