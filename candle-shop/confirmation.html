@@ -20,12 +20,15 @@
       <p style="margin:15px 0 15px 15px"><strong>Livraison :</strong> <span id="deliveryMode">—</span></p>
     </div>
 
-    <a href="index.html" class="btn btn--primary" style="margin-top:24px;">
-      Retour à la boutique
-    </a>
-    <a href="account.html" class="btn btn--primary" style="margin-top:24px;">
-      Voir mes commandes
-    </a>
+    <div id="paymentNotice" style="display:flex;align-items:flex-start;gap:10px;background:#fdf0ec;border:1px solid rgba(45,31,31,.12);border-radius:14px;padding:16px;margin-top:20px;">
+      <span style="font-size:18px;flex-shrink:0;">ℹ️</span>
+      <p id="paymentNoticeText" style="margin:0;font-size:14px;line-height:1.65;color:#2d1f1f;"></p>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:24px;">
+      <a href="index.html" class="btn btn--primary">Retour à la boutique</a>
+      <a href="account.html" class="btn btn--ghost">Voir mes commandes</a>
+    </div>
   </main>
 
   <script>
@@ -33,6 +36,16 @@
     document.getElementById("orderId").textContent = params.get("order") || "—";
     document.getElementById("paymentMode").textContent = params.get("payment") || "—";
     document.getElementById("deliveryMode").textContent = params.get("delivery") || "—";
+
+    const payment = params.get("payment") || "";
+    const noticeEl = document.getElementById("paymentNoticeText");
+    if (payment === "transfer") {
+      noticeEl.innerHTML = "<strong>En attente de votre virement</strong><br>Votre commande sera mise en préparation dès réception de votre virement bancaire. Les coordonnées IBAN vous ont été envoyées par email.";
+    } else if (payment === "cash") {
+      noticeEl.innerHTML = "<strong>Paiement à la remise</strong><br>Votre commande sera prête à la remise en magasin. Le règlement s'effectuera en espèces lors du retrait.";
+    } else {
+      noticeEl.innerHTML = "<strong>Traitement après paiement</strong><br>Votre commande sera traitée dès réception de votre paiement.";
+    }
   </script>
 
 </body>

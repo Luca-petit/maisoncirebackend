@@ -57,13 +57,37 @@
 <body>
 
   <!-- Nav -->
-  <header class="header" id="header">
-    <div class="header__inner">
-      <a href="index.html" class="logo">Guadaluz</a>
-      <nav class="nav" id="nav">
-        <a href="index.html">Boutique</a>
-        <a href="account.html">Mon compte</a>
-      </nav>
+  <header class="header">
+    <button id="hamburger" class="hamburger" aria-label="Menu" aria-expanded="false" type="button">
+      <span class="hamburger__bars" aria-hidden="true"></span>
+    </button>
+
+    <div class="brand">
+      <img src="images/logo.jpg" alt="Guadaluz" class="brandLogo" />
+    </div>
+
+    <nav class="nav" id="nav" aria-label="Navigation">
+      <button class="navClose" id="navClose" aria-label="Fermer le menu" type="button">✕</button>
+      <a href="index.html">Boutique</a>
+      <a id="accountLink" href="account.html">Connexion</a>
+      <div class="navSocial">
+        <a href="https://www.facebook.com" target="_blank" rel="noopener" class="navSocial__link" aria-label="Facebook">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>
+          Facebook
+        </a>
+        <a href="https://www.instagram.com" target="_blank" rel="noopener" class="navSocial__link" aria-label="Instagram">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          Instagram
+        </a>
+      </div>
+    </nav>
+    <div class="navOverlay" id="navOverlay" aria-hidden="true"></div>
+
+    <div class="headerActions">
+      <button class="cartBtn" id="cartBtn" aria-label="Ouvrir le panier">
+        <span aria-hidden="true">🛒</span>
+        <span class="cartBtn__count" id="cartCount">0</span>
+      </button>
     </div>
   </header>
 
@@ -109,12 +133,27 @@
             <li><strong>Virement bancaire :</strong> les coordonnées IBAN sont communiquées dans l'email de confirmation. La commande est traitée dès réception du virement.</li>
             <li><strong>Cash :</strong> uniquement pour les retraits en magasin, à régler lors du retrait.</li>
           </ul>
+          <p><strong>Aucune commande n'est mise en préparation ni expédiée avant réception effective du paiement.</strong> L'enregistrement d'une commande sur le site ne constitue pas une réservation ferme des articles. Guadaluz se réserve le droit d'annuler toute commande dont le paiement n'a pas été reçu dans un délai de 7 jours ouvrés suivant la confirmation de commande.</p>
 
           <h3>7. Droit de rétractation</h3>
-          <p>Conformément à l'article L.221-18 du Code de la consommation, vous disposez d'un délai de 14 jours à compter de la réception de votre commande pour exercer votre droit de rétractation, sans avoir à justifier de motifs. Les bijoux doivent être retournés en parfait état dans leur emballage d'origine. Les frais de retour sont à la charge du client.</p>
+          <p>Conformément à l'article L.221-18 du Code de la consommation, vous disposez d'un délai de 14 jours à compter de la réception de votre commande pour exercer votre droit de rétractation, sans avoir à justifier de motifs. Pour exercer ce droit, contactez-nous par email avant tout envoi.</p>
 
-          <h3>8. Réclamations</h3>
+          <h3>8. Retours et remboursements</h3>
+          <p>Tout article retourné doit être expédié à l'adresse suivante :</p>
+          <p style="background:var(--surface2);border-radius:var(--r-sm);padding:12px 14px;font-weight:600;">
+            Guadaluz — Retours<br>
+            [À compléter : adresse de retour]
+          </p>
+          <p>Les frais de retour sont intégralement à la charge du client. Nous recommandons un envoi en lettre suivie ou colissimo avec suivi ; Guadaluz ne pourra être tenu responsable d'un colis perdu ou endommagé lors du transport retour.</p>
+          <p><strong>Conditions d'état de l'article :</strong> le remboursement est accordé uniquement si l'article est retourné dans son état d'origine — non porté, non endommagé, avec son emballage d'origine intact et toutes ses étiquettes. Tout article retourné qui présente des traces d'usure, d'oxydation, de parfum, de détérioration ou dont l'emballage est manquant sera considéré comme ne remplissant pas les conditions de retour. Dans ce cas, <strong>aucun remboursement ne sera effectué et l'article ne sera pas renvoyé</strong> au client.</p>
+          <p><strong>Délai de remboursement :</strong> sous réserve de conformité de l'article retourné, le remboursement sera effectué dans un délai de <strong>5 jours ouvrés</strong> à compter de la réception et vérification du retour, par le même moyen de paiement que celui utilisé lors de la commande.</p>
+
+          <h3>9. Réclamations</h3>
           <p>Pour toute réclamation, veuillez nous contacter par email. Nous nous engageons à vous répondre dans un délai de 5 jours ouvrés.</p>
+
+          <h3>10. Médiation et règlement des litiges</h3>
+          <p>En cas de litige non résolu à l'amiable, vous pouvez recourir gratuitement à un médiateur de la consommation. Conformément au Règlement européen n°524/2013, la Commission européenne met à disposition une plateforme de règlement en ligne des litiges (RLL) accessible à l'adresse suivante : <a href="https://ec.europa.eu/consumers/odr" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600;">ec.europa.eu/consumers/odr</a>.</p>
+          <p>Notre adresse email pour toute saisine de médiation : <a href="mailto:contact@guadaluz.fr" style="color:var(--brand);">contact@guadaluz.fr</a></p>
         </div>
 
         <!-- Mentions légales -->
@@ -217,6 +256,26 @@
       const btn = document.querySelector(`[data-section="${hash}"]`);
       if (btn) btn.click();
     }
+
+    // Hamburger menu
+    const hamburger  = document.getElementById("hamburger");
+    const nav        = document.getElementById("nav");
+    const navOverlay = document.getElementById("navOverlay");
+    const navClose   = document.getElementById("navClose");
+
+    function setMenuOpen(open) {
+      nav?.classList.toggle("open", open);
+      nav?.classList.toggle("is-open", open);
+      hamburger?.classList.toggle("is-open", open);
+      hamburger?.setAttribute("aria-expanded", String(open));
+      navOverlay?.classList.toggle("is-open", open);
+      document.body.style.overflow = open ? "hidden" : "";
+    }
+
+    hamburger?.addEventListener("click", e => { e.stopPropagation(); setMenuOpen(!nav.classList.contains("is-open")); });
+    navClose?.addEventListener("click",   () => setMenuOpen(false));
+    navOverlay?.addEventListener("click", () => setMenuOpen(false));
+    document.addEventListener("keydown",  e => { if (e.key === "Escape") setMenuOpen(false); });
   </script>
 </body>
 </html>

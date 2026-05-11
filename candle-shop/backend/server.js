@@ -482,7 +482,24 @@ app.get("/api/products", async (_req, res) => {
 });
 
 // ---------- Cart ----------
-app.post("/api/cart/init", async (_req, res) => {
+
+// Rate limit sur la création de sessions (anti-bot)
+const _cartInitLimits = new Map();
+const CART_INIT_MAX    = 10;
+const CART_INIT_WINDOW = 60 * 60 * 1000; // 10 sessions max par heure par IP
+
+app.post("/api/cart/init", async (req, res) => {
+  const ip  = getClientIp(req);
+  const now = Date.now();
+  let entry = _cartInitLimits.get(ip);
+  if (!entry || now > entry.resetAt) {
+    _cartInitLimits.set(ip, { count: 1, resetAt: now + CART_INIT_WINDOW });
+  } else if (entry.count >= CART_INIT_MAX) {
+    return bad(res, 429, "Trop de requêtes.");
+  } else {
+    entry.count++;
+  }
+
   try {
     const session_id = `sid_${Date.now()}_${Math.random().toString(16).slice(2)}`;
     const { error } = await supabase.from("carts").insert({ session_id });
@@ -713,13 +730,20 @@ app.post("/api/orders", async (req, res) => {
     if (cartIsEmpty) return bad(res, 400, "Panier vide");
 
     // Vérifier que le session_id est un vrai panier créé depuis le site (anti-bot)
-    if (session_id) {
-      const { data: cartRow } = await supabase
-        .from("carts").select("session_id").eq("session_id", session_id).maybeSingle();
-      if (!cartRow) return bad(res, 403, "Session invalide");
-    } else {
-      return bad(res, 403, "Session manquante");
-    }
+    if (!session_id) return bad(res, 403, "Session manquante");
+
+    const { data: cartRow } = await supabase
+      .from("carts").select("session_id, created_at").eq("session_id", session_id).maybeSingle();
+    if (!cartRow) return bad(res, 403, "Session invalide");
+
+    // Session trop récente = bot qui enchaîne init + order instantanément
+    const sessionAgeMs = Date.now() - new Date(cartRow.created_at).getTime();
+    if (sessionAgeMs < 4000) return bad(res, 403, "Session trop récente");
+
+    // Session à usage unique : 1 session = 1 commande max
+    const { data: existingOrder } = await supabase
+      .from("orders").select("id").eq("session_id", session_id).maybeSingle();
+    if (existingOrder) return bad(res, 409, "Cette session a déjà été utilisée");
 
     // Recalcul du total côté serveur (prix depuis la DB — le client ne peut pas tricher)
     let serverTotal = 0;
@@ -793,6 +817,8 @@ try {
 
 
 
+    const cgvAcceptedAt = String(req.body?.cgv_accepted_at || "").trim() || new Date().toISOString();
+
     const { data, error } = await supabase
       .from("orders")
       .insert({
@@ -806,6 +832,7 @@ try {
         total,
         delivery_fee,
         status,
+        cgv_accepted_at: cgvAcceptedAt,
       })
       .select("id")
       .single();
@@ -1332,10 +1359,9 @@ app.get("/api/gift-cards/validate/:code", async (req, res) => {
     if (!data.is_active || data.balance <= 0) return bad(res, 400, "Cette carte cadeau a déjà été utilisée");
 
     return ok(res, {
-      valid:            true,
-      balance:          Number(data.balance),
-      initial_amount:   Number(data.initial_amount),
-      recipient_email:  data.recipient_email,
+      valid:          true,
+      balance:        Number(data.balance),
+      initial_amount: Number(data.initial_amount),
     });
   } catch (e) {
     return bad(res, 500, e?.message || "Erreur validation");

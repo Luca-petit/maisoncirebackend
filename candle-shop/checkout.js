@@ -342,6 +342,7 @@
         gift_card_code:     appliedGcCode     || undefined,
         gift_card_discount: gcDiscount        || undefined,
         website:            document.getElementById("coWebsite")?.value || "",
+        cgv_accepted_at:    new Date().toISOString(),
         status: "preparation",
       };
 

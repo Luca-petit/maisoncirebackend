@@ -158,7 +158,7 @@
         return `<div class="uod-item">
           ${imgHtml}
           <div class="uod-item__info">
-            <div class="uod-item__name">${p.name || pid}</div>
+            <div class="uod-item__name">${(p.name || pid).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
             <div class="uod-item__sub">×${qty}${p.price ? " · " + formatEUR(Number(p.price) * Number(qty)) : ""}</div>
           </div>
         </div>`;
@@ -176,7 +176,7 @@
         return `<div class="uod-item">
           ${imgHtml}
           <div class="uod-item__info">
-            <div class="uod-item__name">${pack.name || "Pack"}</div>
+            <div class="uod-item__name">${(pack.name || "Pack").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
             <div class="uod-item__sub">${subItems}${pack.total ? " · " + formatEUR(pack.total) : ""}</div>
           </div>
         </div>`;
