@@ -1052,6 +1052,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
     const stock = Number(payload.stock || 0);
     const image = String(payload.image || "").trim();
     const description = String(payload.description || "").trim();
+    const category = String(payload.category || "").trim() || null;
 
     if (!id || !name) return bad(res, 400, "ID et nom requis");
     if (!Number.isFinite(price) || price < 0) return bad(res, 400, "Prix invalide");
@@ -1059,7 +1060,7 @@ app.post("/api/admin/products", requireAdmin, async (req, res) => {
 
     const { data, error } = await supabase
       .from("products")
-      .insert({ id, name, price, stock, image, description })
+      .insert({ id, name, price, stock, image, description, category })
       .select("*")
       .single();
     if (error) throw error;
@@ -1082,6 +1083,7 @@ app.patch("/api/admin/products/:id", requireAdmin, async (req, res) => {
       ...(payload.stock !== undefined ? { stock: Math.floor(Number(payload.stock || 0)) } : {}),
       ...(payload.image !== undefined ? { image: String(payload.image || "").trim() } : {}),
       ...(payload.description !== undefined ? { description: String(payload.description || "").trim() } : {}),
+      ...(payload.category !== undefined ? { category: String(payload.category || "").trim() || null } : {}),
     };
 
     const { data, error } = await supabase

@@ -297,5 +297,16 @@ create index if not exists gift_cards_pending_idx
   on public.gift_cards(send_date, sent_at) where sent_at is null;
 
 -- ============================================================
+-- 9) CATEGORY pour les produits
+-- ============================================================
+alter table public.products add column if not exists category text;
+
+alter table public.products
+  drop constraint if exists products_category_check;
+alter table public.products
+  add constraint products_category_check
+  check (category in ('boucles-oreilles', 'collier', 'bagues'));
+
+-- ============================================================
 -- FIN
 -- ============================================================

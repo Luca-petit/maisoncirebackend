@@ -570,7 +570,9 @@ const els = {
   hamburger: document.getElementById("hamburger"),
   nav: document.getElementById("nav"),
 
-  grid: document.getElementById("productGrid"),
+  gridBoucles: document.getElementById("gridBoucles"),
+  gridCollier:  document.getElementById("gridCollier"),
+  gridBagues:   document.getElementById("gridBagues"),
 
   cartBtn: document.getElementById("cartBtn"),
   cartCount: document.getElementById("cartCount"),
@@ -646,6 +648,8 @@ const els = {
 
   gcCustomWrap: document.getElementById("gcCustomWrap"),
   gcCustomAmount: document.getElementById("gcCustomAmount"),
+
+  adminCategory: document.getElementById("adminCategory"),
 
   adminOrdersMsg:    document.getElementById("adminOrdersMsg"),
   adminOrdersList:   document.getElementById("adminOrdersList"),
@@ -752,8 +756,7 @@ function btnLoading(btn, loading, originalText = "") {
 }
 
 function renderProductsSkeleton() {
-  if (!els.grid) return;
-  els.grid.innerHTML = Array.from({ length: 6 }).map(() => `
+  const skeletonHtml = Array.from({ length: 4 }).map(() => `
     <article class="skeletonCard">
       <div class="skeletonCard__media skeleton"></div>
       <div class="skeletonCard__body">
@@ -763,6 +766,9 @@ function renderProductsSkeleton() {
       </div>
     </article>
   `).join("");
+  if (els.gridBoucles) els.gridBoucles.innerHTML = skeletonHtml;
+  if (els.gridCollier)  els.gridCollier.innerHTML  = skeletonHtml;
+  if (els.gridBagues)   els.gridBagues.innerHTML   = skeletonHtml;
 }
 
 function bumpCartIcon() {
@@ -829,46 +835,46 @@ function selectPackType(size) {
   Render products (shop grid) — FIX stock temps réel
 ========== */
 
+function getCategoryGrid(cat) {
+  if (cat === 'boucles-oreilles') return els.gridBoucles;
+  if (cat === 'collier') return els.gridCollier;
+  if (cat === 'bagues') return els.gridBagues;
+  return null;
+}
+
 function renderProducts() {
-  if (!els.grid) return;
+  if (els.gridBoucles) els.gridBoucles.innerHTML = '';
+  if (els.gridCollier)  els.gridCollier.innerHTML  = '';
+  if (els.gridBagues)   els.gridBagues.innerHTML   = '';
 
-  els.grid.innerHTML = "";
+  for (var i = 0; i < products.length; i++) {
+    var p = products[i];
+    var dbStock = Number(p.stock || 0);
+    if (dbStock <= 0) continue;
 
-  for (const p of products) {
+    var targetGrid = getCategoryGrid(p.category);
+    if (!targetGrid) continue;
 
-    const inStock = true;
-    const dbStock = Number(p.stock || 0); // ✅ stock réel en DB
-if (dbStock <= 0) continue;           // ✅ masqué seulement si stock DB à 0
-
-// option : pour afficher “reste X dispo” / gérer bouton
-const leftForCart = availableStock(p.id); // stock dispo après ce qu’il y a déjà dans le panier
-const canAdd = leftForCart > 0;
-
-
-
-    const card = document.createElement("article");
-    card.className = "card" + (inStock ? "" : " is-out");
-
+    var card = document.createElement('article');
+    card.className = 'card';
     card.dataset.pdpOpen = p.id;
 
-    const img = p.image
-      ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" />`
-      : "";
+    var imgHtml = p.image
+      ? '<img src=”' + escapeHTML(p.image) + '” alt=”' + escapeHTML(p.name) + '” loading=”lazy” />'
+      : '';
 
-    card.innerHTML = `
-      <div class="productMedia">
-        ${img}
-        <div class="productMedia__overlay"></div>
-      </div>
+    card.innerHTML =
+      '<div class=”productMedia”>' +
+        imgHtml +
+        '<div class=”productMedia__overlay”></div>' +
+      '</div>' +
+      '<div class=”productBody”>' +
+        '<div class=”productFooter”>' +
+          '<span class=”price”>' + formatEUR(p.price) + '</span>' +
+        '</div>' +
+      '</div>';
 
-      <div class="productBody">
-        <div class="productFooter">
-          <span class="price">${formatEUR(p.price)}</span>
-        </div>
-      </div>
-    `;
-
-    els.grid.appendChild(card);
+    targetGrid.appendChild(card);
   }
 }
 
@@ -1589,7 +1595,7 @@ function loadAdminFields(productId) {
   if (els.adminPrice) els.adminPrice.value = p.price;
   if (els.adminStock) els.adminStock.value = p.stock;
   if (els.adminDescription) els.adminDescription.value = p.description || "";
-
+  if (els.adminCategory) els.adminCategory.value = p.category || "";
 }
 
 async function saveAdminFields(productId) {
@@ -1598,7 +1604,8 @@ async function saveAdminFields(productId) {
   const nextName = (els.adminName?.value || "").trim();
   const nextPrice = Number(els.adminPrice?.value);
   const nextStock = Number(els.adminStock?.value);
-  const nextDescription = (els.adminDescription?.value || "").trim(); // ✅ FIX ICI
+  const nextDescription = (els.adminDescription?.value || "").trim();
+  const nextCategory = (els.adminCategory?.value || "").trim();
 
   console.log("🟡 ADMIN FORM VALUES", { nextName, nextPrice, nextStock, nextDescription });
 
@@ -1616,6 +1623,7 @@ async function saveAdminFields(productId) {
     price: Math.round(nextPrice * 100) / 100,
     stock: Math.floor(nextStock),
     description: nextDescription,
+    category: nextCategory || null,
   };
 
   console.log("🔵 PAYLOAD SENT TO API", payload);
@@ -2142,6 +2150,7 @@ const adminAdd = {
   stock: document.getElementById("adminAddStock"),
   image: document.getElementById("adminAddImage"),
   description: document.getElementById("adminAddDescription"),
+  category: document.getElementById("adminAddCategory"),
 };
 
 adminAdd.name?.addEventListener("input", () => {
@@ -2284,10 +2293,11 @@ adminAdd.form?.addEventListener("submit", async (e) => {
   const stock = Number(adminAdd.stock?.value || 0);
   const image = (adminAdd.image?.value || "").trim();
   const description = (adminAdd.description?.value || "").trim();
+  const category = (adminAdd.category?.value || "").trim() || null;
 
   adminAdd.msg.textContent = "Création...";
   try {
-    await apiAdminCreateProduct({ id, name, price, stock, image, description });
+    await apiAdminCreateProduct({ id, name, price, stock, image, description, category });
     adminAdd.msg.textContent = "✅ Produit créé";
     // reset form
     adminAdd.form.reset();
