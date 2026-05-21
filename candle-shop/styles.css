@@ -310,12 +310,15 @@ main, .main { padding-bottom: 40px; }
   100%{ box-shadow: var(--shadow-xs); }
 }
 
-.productMedia { position: relative; aspect-ratio: 4 / 3; background: #f0e8dc; overflow: hidden; }
+.productMedia { position: relative; aspect-ratio: 4 / 3; min-height: 180px; background: #f0e8dc; overflow: hidden; }
 .productMedia img {
   width: 100%; height: 100%; object-fit: cover;
   transform: scale(1.03);
   transition: transform 800ms var(--ease2), filter 800ms var(--ease2);
   filter: saturate(1.06);
+  /* masque l'icone image cassée */
+  color: transparent;
+  font-size: 0;
 }
 .card:hover .productMedia img { transform: scale(1.12); filter: saturate(1.15) contrast(1.04); }
 .productMedia__overlay {
@@ -328,13 +331,12 @@ main, .main { padding-bottom: 40px; }
   display: flex; justify-content: flex-end;
 }
 
-.productBody { padding: 18px 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.productBody { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 6px; }
 .productBody h3 { margin: 0; font-size: 16px; font-weight: 700; }
-.productFooter { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; }
+.productFooter { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 4px; }
 .price {
   font-weight: 800; font-size: 18px; letter-spacing: -.01em;
-  background: var(--grad);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  color: var(--brand4);
 }
 
 /* ---------- Pack wizard ---------- */

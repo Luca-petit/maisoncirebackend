@@ -858,6 +858,7 @@ function makeProductCard(p) {
     img.src = p.image;
     img.alt = p.name || "";
     img.loading = "lazy";
+    img.onerror = function() { this.style.display = "none"; };
     media.appendChild(img);
   }
 
