@@ -757,20 +757,18 @@ function btnLoading(btn, loading, originalText = "") {
 }
 
 function renderProductsSkeleton() {
-  const skeletonHtml = Array.from({ length: 4 }).map(() => `
-    <article class="skeletonCard">
-      <div class="skeletonCard__media skeleton"></div>
-      <div class="skeletonCard__body">
-        <div class="skeleton" style="height:16px;width:65%;"></div>
-        <div class="skeleton" style="height:13px;width:40%;"></div>
-        <div class="skeleton" style="height:18px;width:30%;margin-top:4px;"></div>
-      </div>
-    </article>
-  `).join("");
-  if (els.gridBoucles) els.gridBoucles.innerHTML = skeletonHtml;
-  if (els.gridCollier)  els.gridCollier.innerHTML  = skeletonHtml;
-  if (els.gridBagues)   els.gridBagues.innerHTML   = skeletonHtml;
-  if (els.gridPorteCle) els.gridPorteCle.innerHTML = skeletonHtml;
+  var skeletonCard = '<article class="skeletonCard">' +
+    '<div class="skeletonCard__media skeleton"></div>' +
+    '<div class="skeletonCard__body">' +
+      '<div class="skeleton" style="height:16px;width:65%;"></div>' +
+      '<div class="skeleton" style="height:13px;width:40%;"></div>' +
+      '<div class="skeleton" style="height:18px;width:30%;margin-top:4px;"></div>' +
+    '</div></article>';
+  var skeletonHtml = skeletonCard + skeletonCard + skeletonCard;
+  if (els.gridBoucles)  { document.getElementById('boucles-oreilles').style.display = ''; els.gridBoucles.innerHTML  = skeletonHtml; }
+  if (els.gridCollier)  { document.getElementById('collier').style.display          = ''; els.gridCollier.innerHTML  = skeletonHtml; }
+  if (els.gridBagues)   { document.getElementById('bagues').style.display           = ''; els.gridBagues.innerHTML   = skeletonHtml; }
+  if (els.gridPorteCle) { document.getElementById('porte-cle').style.display        = ''; els.gridPorteCle.innerHTML = skeletonHtml; }
 }
 
 function bumpCartIcon() {
@@ -884,10 +882,17 @@ function makeProductCard(p) {
   return card;
 }
 
+function hideSectionIfEmpty(gridEl, sectionId) {
+  var section = document.getElementById(sectionId);
+  if (!section) return;
+  section.style.display = (gridEl && gridEl.children.length > 0) ? '' : 'none';
+}
+
 function renderProducts() {
-  if (els.gridBoucles) els.gridBoucles.innerHTML = "";
+  if (els.gridBoucles)  els.gridBoucles.innerHTML  = "";
   if (els.gridCollier)  els.gridCollier.innerHTML  = "";
   if (els.gridBagues)   els.gridBagues.innerHTML   = "";
+  if (els.gridPorteCle) els.gridPorteCle.innerHTML = "";
 
   for (var i = 0; i < products.length; i++) {
     var p = products[i];
@@ -898,6 +903,11 @@ function renderProducts() {
 
     targetGrid.appendChild(makeProductCard(p));
   }
+
+  hideSectionIfEmpty(els.gridBoucles,  'boucles-oreilles');
+  hideSectionIfEmpty(els.gridCollier,  'collier');
+  hideSectionIfEmpty(els.gridBagues,   'bagues');
+  hideSectionIfEmpty(els.gridPorteCle, 'porte-cle');
 }
 
 /* ==========
