@@ -1578,7 +1578,7 @@ function renderAdminSelect() {
   grid.innerHTML = products.map(p => `
     <div class="adminThumb ${p.id === current ? "is-selected" : ""}" data-thumb-id="${p.id}">
       ${p.image
-        ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" />`
+        ? `<img src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" loading="lazy" decoding="async" />`
         : `<div class="adminThumb__placeholder">?</div>`
       }
       <button class="adminThumb__del" data-del-id="${p.id}" title="Supprimer" type="button">✕</button>

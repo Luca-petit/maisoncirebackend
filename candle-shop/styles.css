@@ -468,6 +468,9 @@ main, .main { padding-bottom: 40px; }
 .adminProductGrid {
   display: flex; flex-wrap: wrap; gap: 12px;
   padding: 16px 24px 8px;
+  max-height: 340px; overflow-y: auto;
+  content-visibility: auto;
+  contain-intrinsic-size: 0 340px;
 }
 .adminThumb {
   position: relative; width: 80px; height: 80px;
