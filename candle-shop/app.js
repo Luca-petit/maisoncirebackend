@@ -1,10 +1,10 @@
-/* =========================================================
+﻿/* =========================================================
    Guadaluz — app.js (FULL)
    ✅ Includes: Boutique + Panier (singles + packs + giftcards) + Admin + Newsletter
    ✅ Includes: Pack Wizard (Step 1 choose pack, Step 2 compose, then add pack)
    ✅ Includes: Carte Cadeau (live preview + add to cart + remove in cart)
    ✅ NEW: Avis produits (moyenne + liste + ajout) + étoiles cliquables
-   ✅ FIX: Stock “temps réel” (singles + packs) = jamais dépasser le stock total
+   ✅ FIX: Stock "temps réel" (singles + packs) = jamais dépasser le stock total
    ✅ FIX: Packs: grisé/indispo + suppression bouton +1 + suppression badge x0
    ========================================================= */
 
@@ -93,7 +93,7 @@ const DEFAULT_PRODUCTS = [
 ========== */
 
 function getAdminKey() {
-  // ✅ Maintenant, l’admin key = JWT token stocké quand le user a role=admin
+  // ✅ Maintenant, l'admin key = JWT token stocké quand le user a role=admin
   const k = localStorage.getItem("candle_shop_admin_key");
   return (k && k.trim()) ? k.trim() : "";
 }
@@ -573,6 +573,7 @@ const els = {
   gridBoucles: document.getElementById("gridBoucles"),
   gridCollier:  document.getElementById("gridCollier"),
   gridBagues:   document.getElementById("gridBagues"),
+  gridPorteCle: document.getElementById("gridPorteCle"),
 
   cartBtn: document.getElementById("cartBtn"),
   cartCount: document.getElementById("cartCount"),
@@ -769,6 +770,7 @@ function renderProductsSkeleton() {
   if (els.gridBoucles) els.gridBoucles.innerHTML = skeletonHtml;
   if (els.gridCollier)  els.gridCollier.innerHTML  = skeletonHtml;
   if (els.gridBagues)   els.gridBagues.innerHTML   = skeletonHtml;
+  if (els.gridPorteCle) els.gridPorteCle.innerHTML = skeletonHtml;
 }
 
 function bumpCartIcon() {
@@ -836,45 +838,64 @@ function selectPackType(size) {
 ========== */
 
 function getCategoryGrid(cat) {
-  if (cat === 'boucles-oreilles') return els.gridBoucles;
-  if (cat === 'collier') return els.gridCollier;
-  if (cat === 'bagues') return els.gridBagues;
+  if (cat === "boucles-oreilles") return els.gridBoucles;
+  if (cat === "collier")          return els.gridCollier;
+  if (cat === "bagues")           return els.gridBagues;
+  if (cat === "porte-cle")    return els.gridPorteCle;
   return null;
 }
 
+function makeProductCard(p) {
+  var card = document.createElement("article");
+  card.className = "card";
+  card.dataset.pdpOpen = p.id;
+
+  var media = document.createElement("div");
+  media.className = "productMedia";
+
+  if (p.image) {
+    var img = document.createElement("img");
+    img.src = p.image;
+    img.alt = p.name || "";
+    img.loading = "lazy";
+    media.appendChild(img);
+  }
+
+  var overlay = document.createElement("div");
+  overlay.className = "productMedia__overlay";
+  media.appendChild(overlay);
+
+  var body = document.createElement("div");
+  body.className = "productBody";
+
+  var footer = document.createElement("div");
+  footer.className = "productFooter";
+
+  var priceEl = document.createElement("span");
+  priceEl.className = "price";
+  priceEl.textContent = formatEUR(p.price);
+
+  footer.appendChild(priceEl);
+  body.appendChild(footer);
+  card.appendChild(media);
+  card.appendChild(body);
+
+  return card;
+}
+
 function renderProducts() {
-  if (els.gridBoucles) els.gridBoucles.innerHTML = '';
-  if (els.gridCollier)  els.gridCollier.innerHTML  = '';
-  if (els.gridBagues)   els.gridBagues.innerHTML   = '';
+  if (els.gridBoucles) els.gridBoucles.innerHTML = "";
+  if (els.gridCollier)  els.gridCollier.innerHTML  = "";
+  if (els.gridBagues)   els.gridBagues.innerHTML   = "";
 
   for (var i = 0; i < products.length; i++) {
     var p = products[i];
-    var dbStock = Number(p.stock || 0);
-    if (dbStock <= 0) continue;
+    if (Number(p.stock || 0) <= 0) continue;
 
     var targetGrid = getCategoryGrid(p.category);
     if (!targetGrid) continue;
 
-    var card = document.createElement('article');
-    card.className = 'card';
-    card.dataset.pdpOpen = p.id;
-
-    var imgHtml = p.image
-      ? '<img src=”' + escapeHTML(p.image) + '” alt=”' + escapeHTML(p.name) + '” loading=”lazy” />'
-      : '';
-
-    card.innerHTML =
-      '<div class=”productMedia”>' +
-        imgHtml +
-        '<div class=”productMedia__overlay”></div>' +
-      '</div>' +
-      '<div class=”productBody”>' +
-        '<div class=”productFooter”>' +
-          '<span class=”price”>' + formatEUR(p.price) + '</span>' +
-        '</div>' +
-      '</div>';
-
-    targetGrid.appendChild(card);
+    targetGrid.appendChild(makeProductCard(p));
   }
 }
 
@@ -962,7 +983,7 @@ function addToCart(productId, qty = 1) {
 
   const left = availableStock(productId);
   if (qty > left) {
-    toast(`Stock insuffisant pour “${p.name}”`);
+    toast(`Stock insuffisant pour "${p.name}"`);
     return;
   }
 
@@ -1005,7 +1026,7 @@ function setCartQty(productId, qty) {
     const maxAllowed = Math.max(0, Number(p.stock || 0) - reservedWithoutThis);
 
     if (q > maxAllowed) {
-      toast(`Stock insuffisant pour “${p.name}”`);
+      toast(`Stock insuffisant pour "${p.name}"`);
       return;
     }
     cart.skus[productId] = q;
@@ -1062,7 +1083,7 @@ function computeTotals() {
     const saved = free * p.price;
     discount += saved;
 
-    if (free > 0) hintParts.push(`${free} offert(s) sur “${p.name}”`);
+    if (free > 0) hintParts.push(`${free} offert(s) sur "${p.name}"`);
   }
 
   // Packs
@@ -1172,7 +1193,7 @@ function renderCart() {
     for (const gc of giftEntries) {
       const parts = [
         `Receveur : ${gc.receiver || ""}`,
-        `Date d’envoi : ${gc.sendDate ? formatDateFR(gc.sendDate) : "—"}`,
+        `Date d'envoi : ${gc.sendDate ? formatDateFR(gc.sendDate) : "—"}`,
         gc.fromName ? `De : ${gc.fromName}` : null,
         gc.message ? `Message : ${gc.message}` : null,
       ].filter(Boolean);
@@ -1356,7 +1377,7 @@ async function addPackToCart() {
 
     const left = availableStock(it.id);
     if (it.qty > left) {
-      if (els.packMsg) els.packMsg.textContent = `Stock insuffisant pour “${p.name}”.`;
+      if (els.packMsg) els.packMsg.textContent = `Stock insuffisant pour "${p.name}".`;
       setTimeout(() => { if (els.packMsg) els.packMsg.textContent = ""; }, 2000);
       return;
     }
@@ -1745,7 +1766,7 @@ if (e.target?.closest?.("[data-admin-order-close]")) {
   const pt = e.target?.closest?.(".packTypeCard")?.dataset?.packtype;
   if (pt) { selectPackType(pt); return; }
 
-  // Add single (si tu l’utilises encore quelque part)
+  // Add single (si tu l'utilises encore quelque part)
   const addId = e.target?.dataset?.add;
   if (addId) { addToCart(addId, 1); return; }
 
@@ -1847,7 +1868,7 @@ if (ENABLE_NOTIFY)
     if (on) {
       if (!isValidEmail(email)) {
         els.pdpNotifyToggle.checked = false;
-        if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l’alerte.";
+        if (els.pdpMsg) els.pdpMsg.textContent = "Entre un email valide pour activer l'alerte.";
         return;
       }
 
@@ -2191,7 +2212,7 @@ async function uploadProductImage(file) {
 
   const { data } = supa.storage.from(SUPABASE_BUCKET).getPublicUrl(path);
   const url = data?.publicUrl;
-  if (!url) throw new Error("Impossible de générer l’URL");
+  if (!url) throw new Error("Impossible de générer l'URL");
 
   return url;
 }
@@ -2204,10 +2225,10 @@ adminAdd.imgFile?.addEventListener("change", async () => {
     adminAdd.imgStatus.textContent = "Upload...";
     const url = await uploadProductImage(file);
 
-    // URL dans l’input (pour la DB)
+    // URL dans l'input (pour la DB)
     if (adminAdd.image) adminAdd.image.value = url;
 
-    // 👇👇👇 APERÇU IMAGE (C’EST ICI)
+    // 👇👇👇 APERÇU IMAGE (C'EST ICI)
     const preview = document.getElementById("adminImgPreview");
     if (preview) {
       preview.src = url;
