@@ -95,7 +95,7 @@ function formatEUR(n) {
 }
 
 // Construit un tableau HTML avec les articles (singles + packs + gift cards)
-async function buildOrderItemsHtml(cart) {
+async function buildOrderItemsHtml(cart, delivery_fee = 0) {
   const skus      = (cart && typeof cart === "object" && cart.skus && typeof cart.skus === "object") ? cart.skus : {};
   const packs     = Array.isArray(cart?.packs)     ? cart.packs     : [];
   const giftcards = Array.isArray(cart?.giftcards) ? cart.giftcards : [];
@@ -220,6 +220,12 @@ async function buildOrderItemsHtml(cart) {
     `;
   }
 
+  const feeRow = delivery_fee > 0 ? `
+    <tr>
+      <td colspan="3" style="padding:10px 8px;border-top:1px solid #eee;font-size:13px;color:#555;">Frais de livraison</td>
+      <td align="right" style="padding:10px 8px;border-top:1px solid #eee;font-size:13px;color:#555;">${Number(delivery_fee).toFixed(2).replace(".", ",")} €</td>
+    </tr>` : "";
+
   return `
     <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-top:10px;">
       <thead>
@@ -232,6 +238,7 @@ async function buildOrderItemsHtml(cart) {
       </thead>
       <tbody>
         ${rows}
+        ${feeRow}
       </tbody>
     </table>
   `;
@@ -833,7 +840,7 @@ try {
 
     let itemsHtml = "";
 try {
-  itemsHtml = await buildOrderItemsHtml(cart);
+  itemsHtml = await buildOrderItemsHtml(cart, delivery_fee);
 } catch (e) {
   console.error("itemsHtml error:", e?.message || e);
   itemsHtml = `<p style="margin:0;color:#666;">(Impossible de charger les articles)</p>`;
