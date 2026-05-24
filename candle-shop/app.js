@@ -180,6 +180,16 @@ const paymentLabel = order.payment_mode === "cash" ? "Cash" : "Virement";
           ? `<p><strong>Adresse:</strong> ${escapeHTML(addrLine)}</p>`
           : ""
       }
+      ${
+        order.delivery_mode === "shipping" && Number(order.delivery_fee) > 0
+          ? `<p><strong>Frais de port:</strong> ${formatEUR(Number(order.delivery_fee))}</p>`
+          : ""
+      }
+      ${
+        order.delivery_mode === "shipping"
+          ? `<p><strong>Remarques :</strong> ${order.remarques ? escapeHTML(order.remarques) : '<span style="color:#999;font-style:italic;">Aucune</span>'}</p>`
+          : ""
+      }
       <p><strong>Paiement:</strong> ${escapeHTML(paymentLabel)}</p>
       <p><strong>Total:</strong> ${formatEUR(Number(order.total || 0))}</p>
     </div>

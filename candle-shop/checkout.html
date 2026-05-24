@@ -59,6 +59,9 @@
     <section class="card" style="padding:16px;margin-top:16px;">
       <h3>Récapitulatif</h3>
       <div id="checkoutRecap" class="muted" style="margin-top:10px;"></div>
+      <div id="checkoutFeeRecap" style="display:none;margin-top:6px;font-size:14px;color:#2d1f1f;">
+        Frais de livraison : <strong>5,00 €</strong>
+      </div>
       <div style="margin-top:12px;">
         <strong>Total :</strong> <span id="checkoutTotal">—</span>
       </div>
@@ -87,6 +90,18 @@
           <input id="coAddrStreet" placeholder="Rue" />
           <input id="coAddrPostal" placeholder="Code postal" />
           <input id="coAddrCity" placeholder="Ville" />
+        </div>
+
+        <div id="coRemarquesWrap" style="display:none;">
+          <label>
+            Remarques (optionnel)
+            <textarea id="coRemarques" placeholder="Ex : je souhaite recevoir ma commande en point relais Mondial Relay — précisez le point relais souhaité (ville, adresse…)"
+              style="width:100%;box-sizing:border-box;border-radius:12px;border:1.5px solid rgba(45,31,31,.10);background:rgba(45,31,31,.03);padding:12px 14px;font-size:14px;color:#2d1f1f;outline:none;resize:vertical;min-height:90px;font-family:inherit;"></textarea>
+          </label>
+        </div>
+
+        <div id="coDeliveryFeeWrap" style="display:none;font-size:14px;color:#2d1f1f;background:rgba(45,31,31,.04);border-radius:10px;padding:10px 14px;">
+          📦 Frais de port : <strong>5,00 €</strong>
         </div>
 
         <label>

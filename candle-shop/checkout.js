@@ -113,15 +113,35 @@
     };
   }
 
+  let cachedTotals = null;
+  let appliedGcDiscountGlobal = 0;
+
   function setMsg(els, t) {
     if (els.msg) els.msg.textContent = t || "";
   }
 
+  function updateTotalDisplay(els) {
+    if (!cachedTotals || !els.total) return;
+    const isShipping = els.delivery?.value === "shipping";
+    const fee = isShipping ? 5 : 0;
+    const base = cachedTotals.total + fee - appliedGcDiscountGlobal;
+    els.total.textContent = formatEUR(Math.max(0, base));
+    const feeRecap = document.getElementById("checkoutFeeRecap");
+    if (feeRecap) feeRecap.style.display = isShipping ? "" : "none";
+  }
+
   function renderRules(els) {
     const delivery = els.delivery.value;
+    const isShipping = delivery === "shipping";
 
     // adresse visible seulement si shipping
-    if (els.addressWrap) els.addressWrap.style.display = (delivery === "shipping") ? "grid" : "none";
+    if (els.addressWrap) els.addressWrap.style.display = isShipping ? "grid" : "none";
+
+    // remarques + frais de port visibles seulement si shipping
+    const remarquesWrap = document.getElementById("coRemarquesWrap");
+    const feeWrap = document.getElementById("coDeliveryFeeWrap");
+    if (remarquesWrap) remarquesWrap.style.display = isShipping ? "" : "none";
+    if (feeWrap) feeWrap.style.display = isShipping ? "" : "none";
 
     // cash autorisé seulement si pickup
     const cashOption = [...els.payment.options].find(o => o.value === "cash");
@@ -137,6 +157,8 @@
           ? "Paiement par virement : vous recevrez l’IBAN dans l’email de confirmation."
           : "Paiement en cash lors du retrait en magasin.";
     }
+
+    updateTotalDisplay(els);
   }
 
   async function renderRecap(els, cart, productsMap, totals) {
@@ -165,8 +187,11 @@
         : "Panier vide.";
     }
 
-    if (els.total) {
-      els.total.textContent = lines.length ? formatEUR(totals.total) : "—";
+    if (lines.length) {
+      cachedTotals = totals;
+      updateTotalDisplay(els);
+    } else if (els.total) {
+      els.total.textContent = "—";
     }
   }
 
@@ -235,24 +260,22 @@
     function showGcApplied(code, discount) {
       appliedGcCode     = code;
       appliedGcDiscount = discount;
+      appliedGcDiscountGlobal = discount;
       if (gcAppliedDiv) { gcAppliedDiv.style.display = ""; }
       if (gcAppliedLbl) gcAppliedLbl.textContent = `✓ ${code} — ${formatEUR(discount)} déduits`;
       if (gcCodeInput)  gcCodeInput.readOnly = true;
       if (gcApplyBtn)   { gcApplyBtn.textContent = "Retirer"; gcApplyBtn.onclick = removeGc; }
-      // mettre à jour le total affiché
-      const totalsNow = computeTotals(loadCart(), productsMap);
-      const finalTotal = Math.max(0, totalsNow.total - discount);
-      if (els.total) els.total.textContent = formatEUR(finalTotal);
+      updateTotalDisplay(els);
     }
 
     function removeGc() {
       appliedGcCode = ""; appliedGcDiscount = 0;
+      appliedGcDiscountGlobal = 0;
       if (gcAppliedDiv)  gcAppliedDiv.style.display = "none";
       if (gcCodeInput)   { gcCodeInput.readOnly = false; gcCodeInput.value = ""; }
       if (gcApplyBtn)    { gcApplyBtn.textContent = "Appliquer"; gcApplyBtn.onclick = applyGc; }
       setGcMsg("Code retiré.", "#888");
-      const totalsNow = computeTotals(loadCart(), productsMap);
-      if (els.total) els.total.textContent = formatEUR(totalsNow.total);
+      updateTotalDisplay(els);
     }
 
     async function applyGc() {
@@ -313,15 +336,13 @@
 
       let address = null;
       let delivery_fee = 0;
+      const remarques = (document.getElementById("coRemarques")?.value || "").trim() || null;
 
       if (delivery_mode === "shipping") {
         const addr = validateShippingAddress(els);
         if (!addr) return setMsg(els, "❌ Adresse incomplète (rue, code postal, ville).");
         address = addr;
-
-        // si tu veux des frais de port fixes :
-        // delivery_fee = 4.90;
-        delivery_fee = 0;
+        delivery_fee = 5;
       }
 
       // total recalculé (best-effort) comme app.js
@@ -337,6 +358,7 @@
         payment_mode,
         address,
         delivery_fee,
+        remarques,
         cart,
         total:              Math.max(0, total - gcDiscount),
         gift_card_code:     appliedGcCode     || undefined,

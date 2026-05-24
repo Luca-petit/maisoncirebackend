@@ -711,7 +711,8 @@ app.post("/api/orders", async (req, res) => {
     const payment_mode = String(req.body?.payment_mode || "transfer").trim();
     const address =
       req.body?.address && typeof req.body.address === "object" ? req.body.address : null;
-    const delivery_fee = Number(req.body?.delivery_fee || 0) || 0;
+    const delivery_fee = delivery_mode === "shipping" ? 5 : 0;
+    const remarques = String(req.body?.remarques || "").trim().slice(0, 1000) || null;
 
     const status =
       payment_mode === "transfer"
@@ -819,6 +820,7 @@ try {
         delivery_mode,
         payment_mode,
         address,
+        remarques,
         cart,
         total,
         delivery_fee,
@@ -877,6 +879,9 @@ try {
       itemsHtml,
       ibanHtml,
       statusLabel,
+      delivery_fee,
+      address,
+      remarques,
     }),
   });
 } catch (e) {
@@ -897,6 +902,9 @@ try {
         deliveryLabel,
         paymentLabel,
         itemsHtml,
+        delivery_fee,
+        address,
+        remarques,
       }),
     });
   }

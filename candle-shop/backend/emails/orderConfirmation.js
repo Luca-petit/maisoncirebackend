@@ -7,6 +7,9 @@ export function orderConfirmationEmail({
   itemsHtml,
   ibanHtml,
   statusLabel,
+  delivery_fee,
+  address,
+  remarques,
 }) {
   const year = new Date().getFullYear();
 
@@ -30,6 +33,9 @@ export function orderConfirmationEmail({
           ${itemsHtml ? `<div style="margin:0 0 10px;">${itemsHtml}</div>` : ""}
 
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
+          ${address && (address.street || address.city) ? `<p style="margin:0 0 8px;"><strong>Adresse :</strong> ${[address.number, address.street, address.postal_code, address.city].filter(Boolean).join(" ")}</p>` : ""}
+          ${Number(delivery_fee) > 0 ? `<p style="margin:0 0 8px;"><strong>Frais de port :</strong> ${Number(delivery_fee).toFixed(2).replace(".", ",")} €</p>` : ""}
+          ${remarques ? `<p style="margin:0 0 8px;"><strong>Remarques :</strong> ${remarques}</p>` : ""}
           <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
           ${gcDiscount && Number(gcDiscount) > 0 ? `<p style="margin:0 0 8px;color:#2d6a4f;"><strong>Remise carte cadeau :</strong> -${Number(gcDiscount).toFixed(2).replace(".", ",")} €</p>` : ""}
           <p style="margin:0 0 8px;font-size:16px;"><strong>Total à payer :</strong> <span style="font-size:18px;font-weight:700;">${Number(total || 0).toFixed(2).replace(".", ",")} €</span></p>
