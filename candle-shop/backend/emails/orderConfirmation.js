@@ -37,8 +37,8 @@ export function orderConfirmationEmail({
           ${remarques ? `<p style="margin:0 0 8px;"><strong>Remarques :</strong> ${remarques}</p>` : ""}
           <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
           ${gcDiscount && Number(gcDiscount) > 0 ? `<p style="margin:0 0 8px;color:#2d6a4f;"><strong>Remise carte cadeau :</strong> -${Number(gcDiscount).toFixed(2).replace(".", ",")} €</p>` : ""}
-          <p style="margin:0 0 8px;font-size:16px;"><strong>Total à payer :</strong> <span style="font-size:18px;font-weight:700;">${Number(total || 0).toFixed(2).replace(".", ",")} €</span></p>
           <p style="margin:0;"><strong>Statut :</strong> ${statusLabel}</p>
+          <p style="margin:0 0 8px;font-size:16px;"><strong>Total à payer :</strong> <span style="font-size:18px;font-weight:700;">${Number(total || 0).toFixed(2).replace(".", ",")} €</span></p>
         </div>
 
         ${ibanHtml ? `
