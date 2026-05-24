@@ -10,7 +10,8 @@
       "Bash(git rm *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(Test-Path \"c:\\\\Users\\\\Joseph\\\\Desktop\\\\candle-shop-backend-supabase-fixed\\\\candle-shop\\\\backend\\\\.env\")"
     ]
   }
 }
