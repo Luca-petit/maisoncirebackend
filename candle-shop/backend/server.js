@@ -222,8 +222,8 @@ async function buildOrderItemsHtml(cart, delivery_fee = 0) {
 
   const feeRow = delivery_fee > 0 ? `
     <tr>
-      <td colspan="3" style="padding:10px 8px;border-top:1px solid #eee;font-size:13px;color:#555;">Frais de livraison</td>
-      <td align="right" style="padding:10px 8px;border-top:1px solid #eee;font-size:13px;color:#555;">${Number(delivery_fee).toFixed(2).replace(".", ",")} €</td>
+      <td colspan="3" style="padding:10px 8px;border-top:1px solid #eee;">Frais de livraison</td>
+      <td style="padding:10px 8px;border-top:1px solid #eee;text-align:right;">${Number(delivery_fee).toFixed(2).replace(".", ",")} €</td>
     </tr>` : "";
 
   return `
