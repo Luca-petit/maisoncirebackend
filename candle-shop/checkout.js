@@ -134,6 +134,10 @@
     const delivery = els.delivery.value;
     const isShipping = delivery === "shipping";
 
+    // adresse magasin visible seulement si pickup
+    const pickupInfoWrap = document.getElementById("coPickupInfoWrap");
+    if (pickupInfoWrap) pickupInfoWrap.style.display = isShipping ? "none" : "";
+
     // adresse visible seulement si shipping
     if (els.addressWrap) els.addressWrap.style.display = isShipping ? "grid" : "none";
 

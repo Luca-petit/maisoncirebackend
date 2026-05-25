@@ -33,7 +33,9 @@ export function orderConfirmationEmail({
           ${itemsHtml ? `<div style="margin:0 0 10px;">${itemsHtml}</div>` : ""}
 
           <p style="margin:0 0 8px;"><strong>Livraison :</strong> ${deliveryLabel}</p>
-          ${address && (address.street || address.city) ? `<p style="margin:0 0 8px;"><strong>Adresse :</strong> ${[address.number, address.street, address.postal_code, address.city].filter(Boolean).join(" ")}</p>` : ""}
+          ${address && (address.street || address.city)
+            ? `<p style="margin:0 0 8px;"><strong>Adresse :</strong> ${[address.number, address.street, address.postal_code, address.city].filter(Boolean).join(" ")}</p>`
+            : `<p style="margin:0 0 8px;"><strong>Adresse du magasin :</strong> Rue des Mimosas 1, 4610 Beyne-Heusay</p>`}
           ${remarques ? `<p style="margin:0 0 8px;"><strong>Remarques :</strong> ${remarques}</p>` : ""}
           <p style="margin:0 0 8px;"><strong>Paiement :</strong> ${paymentLabel}</p>
           ${gcDiscount && Number(gcDiscount) > 0 ? `<p style="margin:0 0 8px;color:#2d6a4f;"><strong>Remise carte cadeau :</strong> -${Number(gcDiscount).toFixed(2).replace(".", ",")} €</p>` : ""}
