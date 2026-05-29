@@ -77,7 +77,11 @@
         <input id="coEmail" type="email" placeholder="Email" required />
         <input id="coPhone" type="tel" placeholder="Téléphone (optionnel)" />
 
-        <label>
+        <div id="coGcMailNotice" style="display:none;font-size:13px;background:rgba(201,168,67,.10);border:1px solid rgba(201,168,67,.35);border-radius:10px;padding:10px 14px;color:#2d1f1f;">
+          🎁 <strong>Carte cadeau</strong> — celle-ci sera envoyée par email au destinataire après validation de la commande.
+        </div>
+
+        <label id="coDeliverySection">
           Mode de livraison
           <select id="coDelivery" required>
             <option value="pickup">Retrait en magasin</option>

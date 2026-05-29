@@ -319,6 +319,22 @@
     const totals = computeTotals(cart, productsMap);
     await renderRecap(els, cart, productsMap, totals);
 
+    // Visibilité selon contenu du panier
+    const hasGiftCards    = (cart.giftcards || []).length > 0;
+    const hasPhysical     = Object.keys(cart.skus || {}).length > 0 || (cart.packs || []).length > 0;
+    const onlyGiftCards   = hasGiftCards && !hasPhysical;
+
+    const gcMailNotice    = document.getElementById("coGcMailNotice");
+    const deliverySection = document.getElementById("coDeliverySection");
+
+    if (gcMailNotice)    gcMailNotice.style.display    = hasGiftCards ? "" : "none";
+    if (onlyGiftCards) {
+      if (deliverySection) deliverySection.style.display = "none";
+      const pickupInfoWrap = document.getElementById("coPickupInfoWrap");
+      if (pickupInfoWrap)  pickupInfoWrap.style.display  = "none";
+      if (els.delivery)    els.delivery.value             = "pickup";
+    }
+
     els.form.addEventListener("submit", async (e) => {
       e.preventDefault();
       setMsg(els, "");
