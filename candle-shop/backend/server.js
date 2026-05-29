@@ -281,7 +281,7 @@ function generateGiftCardCode() {
 }
 
 async function sendGiftCardMail(gc) {
-  const shopUrl = process.env.SHOP_URL || "https://backendmaisoncire.onrender.com";
+  const shopUrl = process.env.SHOP_URL || "https://guadaluz.be";
   await sendMail({
     to: gc.recipient_email,
     subject: `Guadaluz — Votre carte cadeau de ${Number(gc.initial_amount).toFixed(0)} €`,
