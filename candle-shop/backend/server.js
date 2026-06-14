@@ -132,7 +132,7 @@ async function buildOrderItemsHtml(cart, delivery_fee = 0) {
     try {
       const { data: prods } = await supabase
         .from("products")
-        .select("id,name,price")
+        .select("id,name,price,image")
         .in("id", Array.from(ids));
       byId = Object.fromEntries((prods || []).map(p => [String(p.id), p]));
     } catch (_) { /* fallback : on affichera les IDs comme noms */ }
@@ -150,11 +150,17 @@ async function buildOrderItemsHtml(cart, delivery_fee = 0) {
     const name = p?.name || pid;
     const unit = Number(p?.price || 0);
     const line = unit * qty;
+    const img = p?.image
+      ? `<img src="${escapeHtml(p.image)}" alt="" width="40" height="40" style="width:40px;height:40px;object-fit:cover;border-radius:6px;display:block;" />`
+      : "";
 
     rows += `
       <tr>
         <td style="padding:10px 8px;border-bottom:1px solid #eee;">
-          ${escapeHtml(name)}
+          <table cellpadding="0" cellspacing="0" border="0"><tr>
+            ${img ? `<td style="padding-right:10px;">${img}</td>` : ""}
+            <td style="vertical-align:middle;">${escapeHtml(name)}</td>
+          </tr></table>
         </td>
         <td style="padding:10px 8px;border-bottom:1px solid #eee;text-align:center;">
           ${qty}
@@ -180,7 +186,10 @@ async function buildOrderItemsHtml(cart, delivery_fee = 0) {
         const qty = Math.max(0, Math.floor(Number(it?.qty) || 0));
         if (!pid || !qty) return null;
         const p = byId[pid];
-        return `${escapeHtml(p?.name || pid)} ×${qty}`;
+        const img = p?.image
+          ? `<img src="${escapeHtml(p.image)}" alt="" width="22" height="22" style="width:22px;height:22px;object-fit:cover;border-radius:4px;vertical-align:middle;margin-right:6px;" />`
+          : "";
+        return `${img}${escapeHtml(p?.name || pid)} ×${qty}`;
       })
       .filter(Boolean)
       .join("<br>");
